@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: handcraftbk_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 1
+      POSTGRES_DB: handcraftbk
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d handcraftbk" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - handcraftbk_network
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+
+networks:
+  handcraftbk_network:
+    driver: bridge

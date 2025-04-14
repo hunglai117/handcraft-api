@@ -1,0 +1,8 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "scripts",
+  "entryFile": "",
+  "compilerOptions": {
+    "assets": ["**/*.hbs"]
+  }
+}

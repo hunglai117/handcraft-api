@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "name": "",
+      "script": "node",
+      "args": "./dist/main.js",
+      "log_date_format": "YYYY-MM-DD hh:mm:ss",
+      "namespace": "",
+      "env": {}
+    }
+  ]
+}
