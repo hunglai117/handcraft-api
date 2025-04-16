@@ -1,40 +1,63 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Product } from "./entities/product.entity";
 import { CreateProductDto } from "./dto/create-product.dto";
-import { UpdateProductDto } from "./dto/update-product.dto";
 import { ProductQueryDto } from "./dto/product-query.dto";
-import { EntityNotFoundException } from "../shared/exceptions/common.exception";
+import { UpdateProductDto } from "./dto/update-product.dto";
+import { Product } from "./entities/product.entity";
+import slugify from "slugify";
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
-    private productRepository: Repository<Product>
+    private productRepository: Repository<Product>,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
     const product = this.productRepository.create(createProductDto);
-    return await this.productRepository.save(product);
+
+    if (!product.id) {
+      product.generateId();
+    }
+
+    product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
+
+    return this.productRepository.save(product);
   }
 
   async findAll(query: ProductQueryDto): Promise<[Product[], number]> {
     const {
-      category,
+      categoryId,
+      promotionId,
       minPrice,
       maxPrice,
-      availability,
+      isActive,
+      inStock,
       search,
       page = 1,
       limit = 10,
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = query;
+
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.productRepository.createQueryBuilder("product");
+    const queryBuilder = this.productRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.promotion", "promotion");
 
-    if (category) {
-      queryBuilder.andWhere("product.category = :category", { category });
+    if (categoryId) {
+      queryBuilder.andWhere("product.category_id = :categoryId", {
+        categoryId,
+      });
+    }
+
+    if (promotionId) {
+      queryBuilder.andWhere("product.promotion_id = :promotionId", {
+        promotionId,
+      });
     }
 
     if (minPrice !== undefined && maxPrice !== undefined) {
@@ -48,52 +71,86 @@ export class ProductsService {
       queryBuilder.andWhere("product.price <= :maxPrice", { maxPrice });
     }
 
-    if (availability !== undefined) {
-      queryBuilder.andWhere("product.availability = :availability", {
-        availability,
+    if (isActive !== undefined) {
+      queryBuilder.andWhere("product.is_active = :isActive", {
+        isActive,
       });
+    }
+
+    if (inStock === true) {
+      queryBuilder.andWhere("product.stock_quantity > 0");
+    } else if (inStock === false) {
+      queryBuilder.andWhere("product.stock_quantity = 0");
     }
 
     if (search) {
       queryBuilder.andWhere(
-        "(product.name LIKE :search OR product.description LIKE :search)",
+        `(
+          product.name ILIKE :search 
+          OR product.description ILIKE :search 
+          OR product.tags ILIKE :search
+        )`,
         {
           search: `%${search}%`,
-        }
+        },
       );
     }
 
     queryBuilder.skip(skip).take(limit);
-    queryBuilder.orderBy("product.createdAt", "DESC");
+    queryBuilder.orderBy(`product.${sortBy}`, sortOrder);
 
-    return await queryBuilder.getManyAndCount();
+    return queryBuilder.getManyAndCount();
   }
 
-  async findOne(id: number): Promise<Product> {
-    const product = await this.productRepository.findOneBy({ productID: id });
+  async findOne(id: string): Promise<Product> {
+    const product = await this.productRepository.findOne({
+      where: { id },
+      relations: ["category", "promotion"],
+    });
+
     if (!product) {
-      throw new EntityNotFoundException("Product", id.toString());
+      throw new NotFoundException(`Product with id ${id} not found`);
     }
+
+    return product;
+  }
+
+  async findBySlug(slug: string): Promise<Product> {
+    const product = await this.productRepository.findOne({
+      where: { slug },
+      relations: ["category", "promotion"],
+    });
+
+    if (!product) {
+      throw new NotFoundException(`Product with slug ${slug} not found`);
+    }
+
     return product;
   }
 
   async update(
-    id: number,
-    updateProductDto: UpdateProductDto
+    id: string,
+    updateProductDto: UpdateProductDto,
   ): Promise<Product> {
     const product = await this.findOne(id);
+
     Object.assign(product, updateProductDto);
-    return await this.productRepository.save(product);
+
+    if (updateProductDto.name) {
+      product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
+    }
+
+    return this.productRepository.save(product);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
   }
 
-  async toggleAvailability(id: number): Promise<Product> {
+  async toggleActive(id: string): Promise<Product> {
     const product = await this.findOne(id);
-    product.availability = !product.availability;
-    return await this.productRepository.save(product);
+    product.isActive = !product.isActive;
+    return this.productRepository.save(product);
   }
 }

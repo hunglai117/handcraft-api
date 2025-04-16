@@ -3,12 +3,14 @@ import { PassportStrategy } from "@nestjs/passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { UsersService } from "../users/users.service";
 import { ConfigService } from "@nestjs/config";
+import { User } from "../users/entities/user.entity";
+import { AuthPayload } from "./auth.type";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private usersService: UsersService,
-    configService: ConfigService
+    configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -17,12 +19,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: AuthPayload): Promise<Omit<User, "password">> {
     try {
-      const user = await this.usersService.findByEmail(payload.email);
-      const { password, ...result } = user;
-      return result;
-    } catch (error) {
+      const user = await this.usersService.findById(payload.sub);
+      delete user.password;
+      return user;
+    } catch {
       throw new UnauthorizedException();
     }
   }

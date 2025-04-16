@@ -1,77 +1,227 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
-  Put,
+  Controller,
   Delete,
+  Get,
   HttpCode,
+  Param,
+  Post,
+  Put,
+  Query,
   UseGuards,
-  Request,
 } from "@nestjs/common";
-import { UsersService } from "./users.service";
-import { CreateUserDto } from "./dto/create-user.dto";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
-import { User, UserRole } from "./entities/user.entity";
-import { RolesGuard } from "../auth/guards/roles.guard";
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
+import { plainToInstance } from "class-transformer";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { ApiBearerAuth } from "@nestjs/swagger";
+import { CurrentUser } from "../auth/decorators/user.decorator";
+import { RolesGuard } from "../auth/guards/roles.guard";
+import { PaginationQueryDto } from "../shared/dtos/pagination.dto";
+import {
+  BadRequestResponseDto,
+  ConflictResponseDto,
+  ForbiddenResponseDto,
+  NotFoundResponseDto,
+  UnauthorizedResponseDto,
+} from "../shared/shared.dto";
+import {
+  CreateUserRequestDto,
+  CreateUserResponseDto,
+} from "./dto/create-user.dto";
+import { PaginatedUserResponseDto } from "./dto/get-all-user.dto";
+import { UpdateProfileRequestDto } from "./dto/update-profile.dto";
+import { UserDto } from "./dto/user.dto";
+import { UserRole } from "./entities/user.entity";
+import { UsersService } from "./users.service";
 
+@ApiTags("Users")
 @Controller("users")
 @ApiBearerAuth()
+@ApiBadRequestResponse({
+  description: "Bad request",
+  type: BadRequestResponseDto,
+})
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(@Body() createUserDto: CreateUserDto): Promise<User> {
-    return this.usersService.create(createUserDto);
+  @ApiOperation({
+    summary: "Create user (admin only)",
+  })
+  @ApiCreatedResponse({
+    description: "User successfully created",
+    type: CreateUserResponseDto,
+  })
+  @ApiConflictResponse({
+    description: "Email already exists",
+    type: ConflictResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
+  @ApiBody({ type: CreateUserRequestDto })
+  async create(
+    @Body() CreateUserRequestDto: CreateUserRequestDto,
+  ): Promise<UserDto> {
+    const user = await this.usersService.create(CreateUserRequestDto);
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Get()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  findAll(): Promise<User[]> {
-    return this.usersService.findAll();
+  @ApiOperation({
+    summary: "Get all users (admin only)",
+  })
+  @ApiOkResponse({
+    description: "Paginated list of users",
+    type: PaginatedUserResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
+  async findAll(
+    @Query() paginationQuery: PaginationQueryDto,
+  ): Promise<PaginatedUserResponseDto> {
+    const users = await this.usersService.findAll(paginationQuery);
+    return plainToInstance(PaginatedUserResponseDto, users, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Get(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  findOne(@Param("id") id: string): Promise<User> {
-    return this.usersService.findById(id);
-  }
-
-  @Put(":id")
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  update(
-    @Param("id") id: string,
-    @Body() updateUserDto: Partial<User>
-  ): Promise<User> {
-    return this.usersService.update(id, updateUserDto);
+  @ApiOperation({
+    summary: "Get user by ID (admin only)",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  @ApiOkResponse({ description: "User details", type: UserDto })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
+  async findOne(@Param("id") id: string): Promise<UserDto> {
+    const user = await this.usersService.findById(id);
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Delete(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(204)
+  @ApiOperation({
+    summary: "Delete user (admin only)",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  @ApiNoContentResponse({ description: "User successfully deleted" })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
   remove(@Param("id") id: string): Promise<void> {
     return this.usersService.remove(id);
   }
 
   @Get("profile")
-  getProfile(@Request() req) {
-    return this.usersService.findById(req.user.id);
+  @ApiOperation({
+    summary: "Get current user profile",
+    description: "Retrieve the authenticated user's profile",
+  })
+  @ApiOkResponse({ description: "User profile details", type: UserDto })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  async getProfile(@CurrentUser("sub") userId: string): Promise<UserDto> {
+    const user = await this.usersService.findById(userId);
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Put("profile")
-  updateProfile(
-    @Request() req,
-    @Body() updateProfileDto: UpdateProfileDto
-  ): Promise<User> {
-    return this.usersService.updateProfile(req.user.id, updateProfileDto);
+  @ApiOperation({
+    summary: "Update current user profile",
+    description: "Update the authenticated user's profile",
+  })
+  @ApiOkResponse({ description: "Profile successfully updated", type: UserDto })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiBody({ type: UpdateProfileRequestDto })
+  async updateProfile(
+    @CurrentUser("sub") userId: string,
+    @Body() updateProfileDto: UpdateProfileRequestDto,
+  ): Promise<UserDto> {
+    const user = await this.usersService.updateProfile(
+      userId,
+      updateProfileDto,
+    );
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
   }
 }

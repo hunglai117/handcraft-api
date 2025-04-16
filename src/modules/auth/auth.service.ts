@@ -4,16 +4,14 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { UsersService } from "../users/users.service";
-import { LoginDto } from "../users/dto/login.dto";
-import { CreateUserDto } from "../users/dto/create-user.dto";
-import * as bcrypt from "bcrypt";
-import { plainToClass } from "class-transformer";
-import { LoginResponseDto, RegisterResponseDto } from "./dto/auth-response.dto";
-import { User } from "../users/entities/user.entity";
-import { AuthPayload } from "./auth.type";
 import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
+import { CreateUserRequestDto } from "../users/dto/create-user.dto";
+import { User } from "../users/entities/user.entity";
+import { UsersService } from "../users/users.service";
+import { AuthPayload } from "./auth.type";
+import { LoginDto } from "./dto/login.dto";
 
 @Injectable()
 export class AuthService {
@@ -21,13 +19,10 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     @InjectRepository(User)
-    private userRepository: Repository<User>
+    private userRepository: Repository<User>,
   ) {}
 
-  async validateUser(
-    email: string,
-    password: string
-  ): Promise<Omit<User, "password"> | null> {
+  async validateUser(email: string, password: string): Promise<User | null> {
     try {
       const user = await this.userRepository.findOne({ where: { email } });
 
@@ -38,12 +33,11 @@ export class AuthService {
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (isPasswordValid) {
-        const { password, ...result } = user;
-        return result;
+        return user;
       }
 
       return null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -69,16 +63,16 @@ export class AuthService {
     };
   }
 
-  async register(createUserDto: CreateUserDto) {
+  async register(CreateUserRequestDto: CreateUserRequestDto) {
     const existingUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
+      where: { email: CreateUserRequestDto.email },
     });
 
     if (existingUser) {
       throw new BadRequestException("Email already exists");
     }
 
-    const user = await this.usersService.create(createUserDto);
+    const user = await this.usersService.create(CreateUserRequestDto);
     const payload: AuthPayload = {
       sub: user.id,
       email: user.email,

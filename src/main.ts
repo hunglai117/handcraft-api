@@ -5,27 +5,29 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import * as express from "express";
 import { useContainer } from "class-validator";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import { AppModule } from "./app.module";
+import { ValidationExceptionFilter } from "./common/filters/validation-exception.filter";
 
 async function bootstrap() {
-  // Create app
   const app = await NestFactory.create(AppModule);
 
-  // Replace the default logger with winston
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   const configService = app.get(ConfigService);
   const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
 
-  // Use class-validator container
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
-  // Prefix
   app.setGlobalPrefix(configService.get("app.prefixUrl"));
 
-  // Validation
+  app.useGlobalFilters(new ValidationExceptionFilter(logger));
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -34,10 +36,16 @@ async function bootstrap() {
         enableImplicitConversion: true,
         excludeExtraneousValues: true,
       },
-    })
+      stopAtFirstError: true,
+      disableErrorMessages: false,
+    }),
   );
 
-  app.enableCors();
+  app.enableCors({
+    origin: true, // or specify your origins
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
+    credentials: true,
+  });
 
   if (["development", "staging"].includes(configService.get("app.env"))) {
     const config = new DocumentBuilder()
@@ -54,7 +62,8 @@ async function bootstrap() {
   await app.listen(configService.get("app.port"));
   logger.log(
     `Application is running on: ${configService.get("app.url")}`,
-    "Bootstrap"
+    "Bootstrap",
   );
 }
+
 bootstrap();

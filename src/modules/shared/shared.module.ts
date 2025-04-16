@@ -11,7 +11,7 @@ import config from "src/config";
       inject: [ConfigService],
       useFactory: (configService: ConfigService): TypeOrmModuleOptions => {
         return {
-          type: configService.getOrThrow<string>("typeorm.type") as any,
+          type: configService.getOrThrow<string>("typeorm.type") as "postgres",
           host: configService.getOrThrow<string>("typeorm.host"),
           port: configService.getOrThrow<number>("typeorm.port"),
           username: configService.getOrThrow<string>("typeorm.username"),
