@@ -2,7 +2,6 @@ import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import {
   IsArray,
-  IsBoolean,
   IsDate,
   IsDecimal,
   IsEnum,
@@ -12,6 +11,7 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import { ToBoolean } from "src/common/decorators/dto";
 import { DiscountType, TargetScope } from "../entities/promotion.entity";
 
 export class UpdatePromotionDto {
@@ -126,8 +126,8 @@ export class UpdatePromotionDto {
     description: "Is the promotion active",
     example: true,
   })
-  @IsBoolean()
   @IsOptional()
+  @ToBoolean()
   @Expose()
   isActive?: boolean;
 

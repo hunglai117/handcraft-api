@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
+import { ToBoolean } from "src/common/decorators/dto";
 import { PromotionDto } from "src/modules/promotions/dto/promotion.dto";
 
 export class ValidateCodePromotionResponseDto extends PromotionDto {
@@ -8,6 +9,7 @@ export class ValidateCodePromotionResponseDto extends PromotionDto {
     example: true,
   })
   @Expose()
+  @ToBoolean()
   valid: boolean;
 
   @ApiPropertyOptional({

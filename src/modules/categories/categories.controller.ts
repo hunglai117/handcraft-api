@@ -49,6 +49,19 @@ export class CategoriesController {
     return this.categoriesService.create(createCategoryDto);
   }
 
+  @Get("/menu")
+  @ApiOperation({ summary: "Get all categories for the menu" })
+  @ApiResponse({
+    status: 200,
+    description: "Return all categories for the menu.",
+    type: CategoryDto,
+    isArray: true,
+  })
+  @Public()
+  async getMenuCategories(): Promise<CategoryDto[]> {
+    return this.categoriesService.getMenuCategories();
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get a category by ID" })
   @ApiParam({

@@ -1,6 +1,9 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { IsOptional } from "class-validator";
+import { ToBoolean } from "src/common/decorators/dto";
+
+export { ToBoolean };
 
 export class GetCategoryQueryParamDto {
   @ApiPropertyOptional({
@@ -9,7 +12,8 @@ export class GetCategoryQueryParamDto {
   })
   @IsOptional()
   @Expose()
-  includeChildren?: boolean = true;
+  @ToBoolean()
+  includeChildren?: boolean;
 
   @ApiPropertyOptional({
     description: "If true, include all parents of categories parents",
@@ -17,5 +21,6 @@ export class GetCategoryQueryParamDto {
   })
   @IsOptional()
   @Expose()
-  includeParents?: boolean = true;
+  @ToBoolean()
+  includeParents?: boolean;
 }

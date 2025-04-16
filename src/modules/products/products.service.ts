@@ -1,19 +1,21 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, SelectQueryBuilder } from "typeorm";
 import { CreateProductDto } from "./dto/create-product.dto";
-import { ProductQueryDto } from "./dto/product-query.dto";
+import { ESortBy, ProductQueryDto } from "./dto/product-query.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Product } from "./entities/product.entity";
 import slugify from "slugify";
 import { PaginationHelper } from "../shared/helpers";
 import { PaginatedResponseDto } from "../shared/dtos/paginated-response.dto";
+import { CategoriesService } from "../categories/categories.service";
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private productRepository: Repository<Product>,
+    private categoriesService: CategoriesService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -28,9 +30,34 @@ export class ProductsService {
     return this.productRepository.save(product);
   }
 
+  /**
+   * Find all products with filtering, sorting and pagination
+   */
   async findAll(
     query: ProductQueryDto,
   ): Promise<PaginatedResponseDto<Product>> {
+    const { page, limit, sortBy, ...filters } = query;
+    const skip = (page - 1) * limit;
+
+    let queryBuilder = this.productRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category");
+
+    queryBuilder = await this.applyFilters(queryBuilder, filters);
+
+    queryBuilder = this.applySorting(queryBuilder, sortBy);
+
+    queryBuilder.skip(skip).take(limit);
+
+    const [products, total] = await queryBuilder.getManyAndCount();
+
+    return PaginationHelper.createPaginatedResponse(products, total, query);
+  }
+
+  private async applyFilters(
+    queryBuilder: SelectQueryBuilder<Product>,
+    query: Omit<ProductQueryDto, "page" | "limit" | "sortBy">,
+  ): Promise<SelectQueryBuilder<Product>> {
     const {
       categoryId,
       minPrice,
@@ -38,34 +65,16 @@ export class ProductsService {
       isActive = true,
       inStock = true,
       search,
-      page,
-      limit,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
     } = query;
-
-    const skip = (page - 1) * limit;
-
-    const queryBuilder = this.productRepository
-      .createQueryBuilder("product")
-      .leftJoinAndSelect("product.category", "category");
-
     if (categoryId) {
-      queryBuilder.andWhere("product.category_id = :categoryId", {
-        categoryId,
+      const leafCategoryIds =
+        await this.categoriesService.getLeafCategoriesId(categoryId);
+      queryBuilder.andWhere("product.category_id IN (:...leafCategoryIds)", {
+        leafCategoryIds,
       });
     }
 
-    if (minPrice !== undefined && maxPrice !== undefined) {
-      queryBuilder.andWhere("product.price BETWEEN :minPrice AND :maxPrice", {
-        minPrice,
-        maxPrice,
-      });
-    } else if (minPrice !== undefined) {
-      queryBuilder.andWhere("product.price >= :minPrice", { minPrice });
-    } else if (maxPrice !== undefined) {
-      queryBuilder.andWhere("product.price <= :maxPrice", { maxPrice });
-    }
+    queryBuilder = this.applyPriceFilters(queryBuilder, minPrice, maxPrice);
 
     if (isActive !== undefined) {
       queryBuilder.andWhere("product.is_active = :isActive", {
@@ -92,11 +101,56 @@ export class ProductsService {
       );
     }
 
-    queryBuilder.skip(skip).take(limit);
-    queryBuilder.orderBy(`product.${sortBy}`, sortOrder);
+    return queryBuilder;
+  }
 
-    const [products, total] = await queryBuilder.getManyAndCount();
-    return PaginationHelper.createPaginatedResponse(products, total, query);
+  private applyPriceFilters(
+    queryBuilder: SelectQueryBuilder<Product>,
+    minPrice?: number,
+    maxPrice?: number,
+  ): SelectQueryBuilder<Product> {
+    if (minPrice !== undefined && maxPrice !== undefined) {
+      queryBuilder.andWhere("product.price BETWEEN :minPrice AND :maxPrice", {
+        minPrice,
+        maxPrice,
+      });
+    } else if (minPrice !== undefined) {
+      queryBuilder.andWhere("product.price >= :minPrice", { minPrice });
+    } else if (maxPrice !== undefined) {
+      queryBuilder.andWhere("product.price <= :maxPrice", { maxPrice });
+    }
+
+    return queryBuilder;
+  }
+
+  /**
+   * Apply sorting based on sortBy parameter
+   */
+  private applySorting(
+    queryBuilder: SelectQueryBuilder<Product>,
+    sortBy: ESortBy = ESortBy.NEWEST,
+  ): SelectQueryBuilder<Product> {
+    switch (sortBy) {
+      case ESortBy.NEWEST:
+        queryBuilder.orderBy("product.createdAt", "DESC");
+        break;
+      case ESortBy.PRICE_ASC:
+        queryBuilder.orderBy("product.price", "ASC");
+        break;
+      case ESortBy.PRICE_DESC:
+        queryBuilder.orderBy("product.price", "DESC");
+        break;
+      case ESortBy.POPULARITY:
+        queryBuilder.orderBy("product.rating", "DESC");
+        break;
+      case ESortBy.TOP_SELLER:
+        queryBuilder.orderBy("product.purchaseCount", "DESC");
+        break;
+      default:
+        queryBuilder.orderBy("product.createdAt", "DESC");
+        break;
+    }
+    return queryBuilder;
   }
 
   async findOne(id: string): Promise<Product> {

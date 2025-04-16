@@ -65,6 +65,32 @@ export class CategoriesService {
     return category;
   }
 
+  getMenuCategories(): CategoryDto[] | PromiseLike<CategoryDto[]> {
+    return this.categoryRepository
+      .createQueryBuilder("category")
+      .where("category.parentId IS NULL")
+      .orderBy("category.name", "ASC")
+      .getMany();
+  }
+
+  async getLeafCategoriesId(ancestorId: string): Promise<string[]> {
+    const leafCategories: string[] = [];
+    const ancestor = await this.findOne(ancestorId, true, false);
+
+    if (ancestor && ancestor.children) {
+      for (const child of ancestor.children) {
+        if (child.isLeaf) {
+          leafCategories.push(child.id);
+        } else {
+          const childLeafs = await this.getLeafCategoriesId(child.id);
+          leafCategories.push(...childLeafs);
+        }
+      }
+    }
+
+    return leafCategories;
+  }
+
   private async getParentHierarchy(categoryId: string): Promise<Category[]> {
     const parents: Category[] = [];
     let currentCategoryId = categoryId;

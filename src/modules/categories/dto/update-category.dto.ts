@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsOptional, IsString, MaxLength } from "class-validator";
+import { ToBoolean } from "./get-category.dto";
 
 export class UpdateCategoryDto {
   @ApiPropertyOptional({
@@ -36,8 +37,8 @@ export class UpdateCategoryDto {
     description: "Whether this category has no subcategories",
     example: true,
   })
-  @IsBoolean()
   @IsOptional()
+  @ToBoolean()
   @Expose()
   isLeaf?: boolean;
 }

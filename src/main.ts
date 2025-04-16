@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as dotenv from "dotenv";
 dotenv.config();
 
@@ -38,6 +39,7 @@ async function bootstrap() {
       },
       stopAtFirstError: true,
       disableErrorMessages: false,
+      always: true,
     }),
   );
 
@@ -57,6 +59,7 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup(configService.get("app.swagger.path"), app, document);
+    fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
   }
 
   await app.listen(configService.get("app.port"));

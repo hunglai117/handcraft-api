@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Expose, Type } from "class-transformer";
 import {
   IsArray,
-  IsBoolean,
   IsDecimal,
   IsJSON,
   IsNumber,
@@ -9,7 +9,7 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
-import { Expose, Type } from "class-transformer";
+import { ToBoolean } from "src/common/decorators/dto";
 
 export class UpdateProductDto {
   @ApiPropertyOptional({
@@ -146,8 +146,8 @@ export class UpdateProductDto {
     description: "Product availability status",
     example: true,
   })
-  @IsBoolean()
   @IsOptional()
+  @ToBoolean()
   @Expose()
   isActive?: boolean;
 

@@ -1,9 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
 import { Expose, Type } from "class-transformer";
-import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
+import { IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { ToBoolean } from "src/common/decorators/dto";
 import { PaginatedResponseDto } from "src/modules/shared/dtos/paginated-response.dto";
+import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
 import { ProductDto } from "./product.dto";
+
+export enum ESortBy {
+  NEWEST = "newest",
+  PRICE_ASC = "price-asc",
+  PRICE_DESC = "price-desc",
+  POPULARITY = "popularity",
+  TOP_SELLER = "top-seller",
+}
 
 export class ProductQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
@@ -37,9 +46,8 @@ export class ProductQueryDto extends PaginationQueryDto {
     description: "Filter by active status",
     example: true,
   })
-  @IsBoolean()
   @IsOptional()
-  @Type(() => Boolean)
+  @ToBoolean()
   @Expose()
   isActive?: boolean;
 
@@ -47,15 +55,13 @@ export class ProductQueryDto extends PaginationQueryDto {
     description: "Filter by stock availability (greater than 0)",
     example: true,
   })
-  @IsBoolean()
   @IsOptional()
-  @Type(() => Boolean)
+  @ToBoolean()
   @Expose()
   inStock?: boolean;
 
   @ApiPropertyOptional({
     description: "Search in name, description, and tags",
-    example: "wooden bowl",
   })
   @IsString()
   @IsOptional()
@@ -64,23 +70,13 @@ export class ProductQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({
     description: "Sort field",
-    example: "price",
-    enum: ["price", "createdAt", "rating", "purchaseCount"],
+    example: ESortBy.NEWEST,
+    enum: ESortBy,
   })
-  @IsString()
+  @IsEnum(ESortBy)
   @IsOptional()
   @Expose()
-  sortBy?: string = "createdAt";
-
-  @ApiPropertyOptional({
-    description: "Sort order",
-    example: "DESC",
-    enum: ["ASC", "DESC"],
-  })
-  @IsString()
-  @IsOptional()
-  @Expose()
-  sortOrder?: "ASC" | "DESC" = "DESC";
+  sortBy?: ESortBy;
 }
 
 export class PaginatedProductResponseDto extends PaginatedResponseDto<ProductDto> {
