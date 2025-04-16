@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { CategoryDto } from "../../categories/dto/category.dto";
-import { PromotionDto } from "../../promotions/dto/promotion.dto";
 
 export class ProductDto {
   @ApiProperty({
@@ -120,21 +119,6 @@ export class ProductDto {
   })
   @Expose()
   isActive: boolean;
-
-  @ApiPropertyOptional({
-    description: "Promotion ID",
-    example: "1234567890123456789",
-    type: String,
-  })
-  @Expose()
-  promotion_id?: string;
-
-  @ApiPropertyOptional({
-    description: "Promotion information",
-  })
-  @Expose()
-  @Type(() => PromotionDto)
-  promotion?: PromotionDto;
 
   @ApiPropertyOptional({
     description: "Related product IDs",
