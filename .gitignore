@@ -40,3 +40,4 @@ lerna-debug.log*
 !.env.example
 
 swagger-spec.json
+images/*

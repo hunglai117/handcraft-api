@@ -75,17 +75,24 @@ export class CategoriesService {
 
   async getLeafCategoriesId(ancestorId: string): Promise<string[]> {
     const leafCategories: string[] = [];
-    const ancestor = await this.findOne(ancestorId, true, false);
+    const ancestor = await this.categoryRepository.findOne({
+      where: { id: ancestorId },
+      relations: ["children"],
+    });
 
-    if (ancestor && ancestor.children) {
-      for (const child of ancestor.children) {
-        if (child.isLeaf) {
-          leafCategories.push(child.id);
-        } else {
-          const childLeafs = await this.getLeafCategoriesId(child.id);
-          leafCategories.push(...childLeafs);
-        }
+    if (!ancestor) {
+      throw new NotFoundException(`Category with ID ${ancestorId} not found`);
+    }
+
+    const children = ancestor.children;
+
+    if (children && children.length > 0) {
+      for (const child of children) {
+        const childLeafCategories = await this.getLeafCategoriesId(child.id);
+        leafCategories.push(...childLeafCategories);
       }
+    } else {
+      leafCategories.push(ancestor.id);
     }
 
     return leafCategories;

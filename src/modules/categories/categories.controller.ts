@@ -27,6 +27,7 @@ import { CreateCategoryDto } from "./dto/create-category.dto";
 import { GetCategoryQueryParamDto } from "./dto/get-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { Category } from "./entities/category.entity";
+import { GetMenuCategoryResponseDto } from "./dto/get-menu-category.dto";
 
 @ApiTags("Categories")
 @Controller("categories")
@@ -54,12 +55,18 @@ export class CategoriesController {
   @ApiResponse({
     status: 200,
     description: "Return all categories for the menu.",
-    type: CategoryDto,
-    isArray: true,
+    type: GetMenuCategoryResponseDto,
   })
   @Public()
-  async getMenuCategories(): Promise<CategoryDto[]> {
-    return this.categoriesService.getMenuCategories();
+  async getMenuCategories(): Promise<GetMenuCategoryResponseDto> {
+    const categories = await this.categoriesService.getMenuCategories();
+    return plainToInstance(
+      GetMenuCategoryResponseDto,
+      { categories },
+      {
+        excludeExtraneousValues: true,
+      },
+    );
   }
 
   @Get(":id")

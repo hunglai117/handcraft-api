@@ -37,6 +37,7 @@ export class ProductsService {
     query: ProductQueryDto,
   ): Promise<PaginatedResponseDto<Product>> {
     const { page, limit, sortBy, ...filters } = query;
+    console.log("query", query);
     const skip = (page - 1) * limit;
 
     let queryBuilder = this.productRepository
@@ -48,7 +49,8 @@ export class ProductsService {
     queryBuilder = this.applySorting(queryBuilder, sortBy);
 
     queryBuilder.skip(skip).take(limit);
-
+    console.log("queryBuilder", queryBuilder.getSql());
+    console.log("queryBuilder parameters", queryBuilder.getParameters());
     const [products, total] = await queryBuilder.getManyAndCount();
 
     return PaginationHelper.createPaginatedResponse(products, total, query);
