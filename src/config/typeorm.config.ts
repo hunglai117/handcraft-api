@@ -4,7 +4,7 @@ import { registerAs } from "@nestjs/config";
 
 dotenv.config();
 
-export default registerAs("typeorm", () => {
+export const typeormConfig = registerAs("typeorm", () => {
   return {
     type: process.env.DB_TYPE || "postgres",
     host: process.env.DB_HOST || "localhost",
@@ -18,8 +18,7 @@ export default registerAs("typeorm", () => {
   };
 });
 
-// Create the DataSource with explicit environment variables
-export const dataSource = new DataSource({
+export default new DataSource({
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
   port: parseInt(process.env.DB_PORT, 10) || 5432,

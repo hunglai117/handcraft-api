@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -88,9 +87,8 @@ export class PromotionsController {
   @ApiOperation({ summary: "Update a promotion (admin only)" })
   @ApiParam({
     name: "id",
-    description: "Promotion UUID",
+    description: "Promotion ID",
     type: String,
-    example: "550e8400-e29b-41d4-a716-446655440000",
   })
   @ApiResponse({
     status: 200,
@@ -111,7 +109,7 @@ export class PromotionsController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   async update(
-    @Param("id", ParseUUIDPipe) id: string,
+    @Param("id") id: string,
     @Body() updatePromotionDto: UpdatePromotionDto,
   ): Promise<PromotionDto> {
     const promotion = await this.promotionsService.update(
@@ -128,7 +126,7 @@ export class PromotionsController {
   @ApiOperation({ summary: "Delete a promotion (admin only)" })
   @ApiParam({
     name: "id",
-    description: "Promotion UUID",
+    description: "Promotion ID",
     type: String,
     example: "550e8400-e29b-41d4-a716-446655440000",
   })
@@ -144,7 +142,7 @@ export class PromotionsController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  async remove(@Param("id", ParseUUIDPipe) id: string): Promise<void> {
+  async remove(@Param("id") id: string): Promise<void> {
     return this.promotionsService.remove(id);
   }
 
@@ -152,7 +150,7 @@ export class PromotionsController {
   @ApiOperation({ summary: "Toggle promotion active status (admin only)" })
   @ApiParam({
     name: "id",
-    description: "Promotion UUID",
+    description: "Promotion ID",
     type: String,
     example: "550e8400-e29b-41d4-a716-446655440000",
   })
@@ -169,9 +167,7 @@ export class PromotionsController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  async toggleActive(
-    @Param("id", ParseUUIDPipe) id: string,
-  ): Promise<PromotionDto> {
+  async toggleActive(@Param("id") id: string): Promise<PromotionDto> {
     const promotion = await this.promotionsService.toggleActive(id);
     return plainToInstance(PromotionDto, promotion, {
       excludeExtraneousValues: true,

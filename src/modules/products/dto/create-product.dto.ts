@@ -8,12 +8,10 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
 } from "class-validator";
 import { Expose, Type } from "class-transformer";
 
-@Expose()
 export class CreateProductDto {
   @ApiProperty({
     description: "The name of the product",
@@ -22,6 +20,7 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
+  @Expose()
   name: string;
 
   @ApiPropertyOptional({
@@ -30,14 +29,15 @@ export class CreateProductDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   description?: string;
 
   @ApiPropertyOptional({
     description: "Category ID of the product",
     example: "550e8400-e29b-41d4-a716-446655440000",
   })
-  @IsUUID()
   @IsOptional()
+  @Expose()
   category_id?: string;
 
   @ApiProperty({
@@ -46,6 +46,7 @@ export class CreateProductDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsNotEmpty()
+  @Expose()
   price: number;
 
   @ApiProperty({
@@ -54,6 +55,7 @@ export class CreateProductDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsNotEmpty()
+  @Expose()
   originalPrice: number;
 
   @ApiPropertyOptional({
@@ -64,6 +66,7 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(3)
   @IsOptional()
+  @Expose()
   currency?: string = "VND";
 
   @ApiPropertyOptional({
@@ -74,6 +77,7 @@ export class CreateProductDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @Expose()
   stockQuantity?: number = 0;
 
   @ApiPropertyOptional({
@@ -83,6 +87,7 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(100)
   @IsOptional()
+  @Expose()
   sku?: string;
 
   @ApiPropertyOptional({
@@ -94,6 +99,7 @@ export class CreateProductDto {
   })
   @IsArray()
   @IsOptional()
+  @Expose()
   images?: string[];
 
   @ApiPropertyOptional({
@@ -106,6 +112,7 @@ export class CreateProductDto {
   })
   @IsJSON()
   @IsOptional()
+  @Expose()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications?: Record<string, any>;
 
@@ -115,6 +122,7 @@ export class CreateProductDto {
   })
   @IsArray()
   @IsOptional()
+  @Expose()
   tags?: string[];
 
   @ApiPropertyOptional({
@@ -124,6 +132,7 @@ export class CreateProductDto {
   })
   @IsBoolean()
   @IsOptional()
+  @Expose()
   isActive?: boolean = true;
 
   @ApiPropertyOptional({
@@ -135,5 +144,6 @@ export class CreateProductDto {
   })
   @IsArray()
   @IsOptional()
+  @Expose()
   relatedProductIds?: string[];
 }

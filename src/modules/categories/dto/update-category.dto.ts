@@ -1,14 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import {
-  IsBoolean,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MaxLength,
-} from "class-validator";
+import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
 
-@Expose()
 export class UpdateCategoryDto {
   @ApiPropertyOptional({
     description: "Category name",
@@ -17,6 +10,7 @@ export class UpdateCategoryDto {
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @Expose()
   name?: string;
 
   @ApiPropertyOptional({
@@ -26,6 +20,7 @@ export class UpdateCategoryDto {
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @Expose()
   pathUrl?: string;
 
   @ApiPropertyOptional({
@@ -33,8 +28,8 @@ export class UpdateCategoryDto {
     example: "550e8400-e29b-41d4-a716-446655440000",
     nullable: true,
   })
-  @IsUUID()
   @IsOptional()
+  @Expose()
   parentId?: string;
 
   @ApiPropertyOptional({
@@ -43,5 +38,6 @@ export class UpdateCategoryDto {
   })
   @IsBoolean()
   @IsOptional()
+  @Expose()
   isLeaf?: boolean;
 }

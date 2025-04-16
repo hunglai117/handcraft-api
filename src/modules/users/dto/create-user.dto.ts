@@ -23,7 +23,7 @@ export class CreateUserRequestDto {
 
   @ApiProperty({
     description: "User email address (must be unique)",
-    example: "john.doe@example.com",
+    example: "user@example.com",
   })
   @IsNotEmpty()
   @IsEmail()
@@ -66,7 +66,7 @@ export class CreateUserResponseDto {
 
   @ApiProperty({
     description: "User email address",
-    example: "john.doe@example.com",
+    example: "user@example.com",
   })
   @Expose()
   email: string;

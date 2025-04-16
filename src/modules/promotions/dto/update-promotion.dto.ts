@@ -9,13 +9,11 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
   Min,
 } from "class-validator";
 import { DiscountType, TargetScope } from "../entities/promotion.entity";
 
-@Expose()
 export class UpdatePromotionDto {
   @ApiPropertyOptional({
     description: "Promotion name",
@@ -24,6 +22,7 @@ export class UpdatePromotionDto {
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @Expose()
   name?: string;
 
   @ApiPropertyOptional({
@@ -32,6 +31,7 @@ export class UpdatePromotionDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   description?: string;
 
   @ApiPropertyOptional({
@@ -41,6 +41,7 @@ export class UpdatePromotionDto {
   @IsString()
   @MaxLength(50)
   @IsOptional()
+  @Expose()
   code?: string;
 
   @ApiPropertyOptional({
@@ -50,6 +51,7 @@ export class UpdatePromotionDto {
   })
   @IsEnum(DiscountType)
   @IsOptional()
+  @Expose()
   discountType?: DiscountType;
 
   @ApiPropertyOptional({
@@ -58,6 +60,7 @@ export class UpdatePromotionDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
+  @Expose()
   discountValue?: number;
 
   @ApiPropertyOptional({
@@ -67,6 +70,7 @@ export class UpdatePromotionDto {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
+  @Expose()
   startDate?: Date;
 
   @ApiPropertyOptional({
@@ -76,6 +80,7 @@ export class UpdatePromotionDto {
   @IsDate()
   @Type(() => Date)
   @IsOptional()
+  @Expose()
   endDate?: Date;
 
   @ApiPropertyOptional({
@@ -84,6 +89,7 @@ export class UpdatePromotionDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
+  @Expose()
   minOrderValue?: number;
 
   @ApiPropertyOptional({
@@ -93,6 +99,7 @@ export class UpdatePromotionDto {
   })
   @IsEnum(TargetScope)
   @IsOptional()
+  @Expose()
   targetScope?: TargetScope;
 
   @ApiPropertyOptional({
@@ -102,6 +109,7 @@ export class UpdatePromotionDto {
   @IsInt()
   @Min(0)
   @IsOptional()
+  @Expose()
   usageLimit?: number;
 
   @ApiPropertyOptional({
@@ -111,6 +119,7 @@ export class UpdatePromotionDto {
   @IsInt()
   @Min(0)
   @IsOptional()
+  @Expose()
   usageLimitPerUser?: number;
 
   @ApiPropertyOptional({
@@ -119,6 +128,7 @@ export class UpdatePromotionDto {
   })
   @IsBoolean()
   @IsOptional()
+  @Expose()
   isActive?: boolean;
 
   @ApiPropertyOptional({
@@ -127,8 +137,8 @@ export class UpdatePromotionDto {
     example: ["550e8400-e29b-41d4-a716-446655440000"],
   })
   @IsArray()
-  @IsUUID(undefined, { each: true })
   @IsOptional()
+  @Expose()
   categoryIds?: string[];
 
   @ApiPropertyOptional({
@@ -137,7 +147,7 @@ export class UpdatePromotionDto {
     example: ["550e8400-e29b-41d4-a716-446655440000"],
   })
   @IsArray()
-  @IsUUID(undefined, { each: true })
   @IsOptional()
+  @Expose()
   productIds?: string[];
 }

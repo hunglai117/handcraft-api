@@ -1,29 +1,17 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import {
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  IsUUID,
-} from "class-validator";
-import { Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
+import { Expose, Type } from "class-transformer";
+import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
+import { PaginatedResponseDto } from "src/modules/shared/dtos/paginated-response.dto";
+import { ProductDto } from "./product.dto";
 
-export class ProductQueryDto {
+export class ProductQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
     description: "Filter by category ID",
-    example: "550e8400-e29b-41d4-a716-446655440000",
   })
-  @IsUUID()
   @IsOptional()
+  @Expose()
   categoryId?: string;
-
-  @ApiPropertyOptional({
-    description: "Filter by promotion ID",
-    example: "550e8400-e29b-41d4-a716-446655440000",
-  })
-  @IsUUID()
-  @IsOptional()
-  promotionId?: string;
 
   @ApiPropertyOptional({
     description: "Filter by minimum price",
@@ -32,6 +20,7 @@ export class ProductQueryDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @Expose()
   minPrice?: number;
 
   @ApiPropertyOptional({
@@ -41,6 +30,7 @@ export class ProductQueryDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @Expose()
   maxPrice?: number;
 
   @ApiPropertyOptional({
@@ -50,6 +40,7 @@ export class ProductQueryDto {
   @IsBoolean()
   @IsOptional()
   @Type(() => Boolean)
+  @Expose()
   isActive?: boolean;
 
   @ApiPropertyOptional({
@@ -59,6 +50,7 @@ export class ProductQueryDto {
   @IsBoolean()
   @IsOptional()
   @Type(() => Boolean)
+  @Expose()
   inStock?: boolean;
 
   @ApiPropertyOptional({
@@ -67,33 +59,17 @@ export class ProductQueryDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   search?: string;
-
-  @ApiPropertyOptional({
-    description: "Page number",
-    default: 1,
-  })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  page?: number = 1;
-
-  @ApiPropertyOptional({
-    description: "Items per page",
-    default: 10,
-  })
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  limit?: number = 10;
 
   @ApiPropertyOptional({
     description: "Sort field",
     example: "price",
-    enum: ["price", "createdAt", "rating", "viewCount", "purchaseCount"],
+    enum: ["price", "createdAt", "rating", "purchaseCount"],
   })
   @IsString()
   @IsOptional()
+  @Expose()
   sortBy?: string = "createdAt";
 
   @ApiPropertyOptional({
@@ -103,5 +79,16 @@ export class ProductQueryDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   sortOrder?: "ASC" | "DESC" = "DESC";
+}
+
+export class PaginatedProductResponseDto extends PaginatedResponseDto<ProductDto> {
+  @ApiProperty({
+    description: "Array of product items",
+    type: [ProductDto],
+  })
+  @Type(() => ProductDto)
+  @Expose()
+  items: ProductDto[];
 }

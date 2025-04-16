@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Param,
-  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -54,9 +53,8 @@ export class CategoriesController {
   @ApiOperation({ summary: "Get a category by ID" })
   @ApiParam({
     name: "id",
-    description: "Category UUID",
+    description: "Category ID",
     type: String,
-    example: "550e8400-e29b-41d4-a716-446655440000",
   })
   @ApiResponse({
     status: 200,
@@ -70,7 +68,7 @@ export class CategoriesController {
   })
   @Public()
   async findOneById(
-    @Param("id", ParseUUIDPipe) id: string,
+    @Param("id") id: string,
     @Query() query: GetCategoryQueryParamDto,
   ): Promise<CategoryDto> {
     const { includeChildren, includeParents } = query;
@@ -88,9 +86,8 @@ export class CategoriesController {
   @ApiOperation({ summary: "Update a category (admin only)" })
   @ApiParam({
     name: "id",
-    description: "Category UUID",
+    description: "Category ID",
     type: String,
-    example: "550e8400-e29b-41d4-a716-446655440000",
   })
   @ApiResponse({
     status: 200,
@@ -106,7 +103,7 @@ export class CategoriesController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
   async update(
-    @Param("id", ParseUUIDPipe) id: string,
+    @Param("id") id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ): Promise<Category> {
     return this.categoriesService.update(id, updateCategoryDto);

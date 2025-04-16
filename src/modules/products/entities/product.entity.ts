@@ -76,9 +76,6 @@ export class Product extends BaseEntity {
   @Column({ type: "simple-array", nullable: true, name: "related_product_ids" })
   relatedProductIds: string[];
 
-  @Column({ default: 0, name: "view_count" })
-  viewCount: number;
-
   @Column({ default: 0, name: "purchase_count" })
   purchaseCount: number;
 }

@@ -116,6 +116,55 @@ export class UsersController {
     });
   }
 
+  @Get("profile")
+  @ApiOperation({
+    summary: "Get current user profile",
+    description: "Retrieve the authenticated user's profile",
+  })
+  @ApiOkResponse({ description: "User profile details", type: UserDto })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  async getProfile(@CurrentUser("sub") userId: string): Promise<UserDto> {
+    const user = await this.usersService.findById(userId);
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Put("profile")
+  @ApiOperation({
+    summary: "Update current user profile",
+    description: "Update the authenticated user's profile",
+  })
+  @ApiOkResponse({ description: "Profile successfully updated", type: UserDto })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiBody({ type: UpdateProfileRequestDto })
+  async updateProfile(
+    @CurrentUser("sub") userId: string,
+    @Body() updateProfileDto: UpdateProfileRequestDto,
+  ): Promise<UserDto> {
+    const user = await this.usersService.updateProfile(
+      userId,
+      updateProfileDto,
+    );
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
+  }
+
   @Get(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -174,54 +223,5 @@ export class UsersController {
   })
   remove(@Param("id") id: string): Promise<void> {
     return this.usersService.remove(id);
-  }
-
-  @Get("profile")
-  @ApiOperation({
-    summary: "Get current user profile",
-    description: "Retrieve the authenticated user's profile",
-  })
-  @ApiOkResponse({ description: "User profile details", type: UserDto })
-  @ApiUnauthorizedResponse({
-    description: "Unauthorized",
-    type: UnauthorizedResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: "User not found",
-    type: NotFoundResponseDto,
-  })
-  async getProfile(@CurrentUser("sub") userId: string): Promise<UserDto> {
-    const user = await this.usersService.findById(userId);
-    return plainToInstance(UserDto, user, {
-      excludeExtraneousValues: true,
-    });
-  }
-
-  @Put("profile")
-  @ApiOperation({
-    summary: "Update current user profile",
-    description: "Update the authenticated user's profile",
-  })
-  @ApiOkResponse({ description: "Profile successfully updated", type: UserDto })
-  @ApiUnauthorizedResponse({
-    description: "Unauthorized",
-    type: UnauthorizedResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: "User not found",
-    type: NotFoundResponseDto,
-  })
-  @ApiBody({ type: UpdateProfileRequestDto })
-  async updateProfile(
-    @CurrentUser("sub") userId: string,
-    @Body() updateProfileDto: UpdateProfileRequestDto,
-  ): Promise<UserDto> {
-    const user = await this.usersService.updateProfile(
-      userId,
-      updateProfileDto,
-    );
-    return plainToInstance(UserDto, user, {
-      excludeExtraneousValues: true,
-    });
   }
 }

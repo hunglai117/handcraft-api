@@ -26,7 +26,7 @@ export class UserResponseDto {
 
   @ApiProperty({
     description: "User email",
-    example: "john.doe@example.com",
+    example: "user@example.com",
   })
   @Expose()
   email: string;

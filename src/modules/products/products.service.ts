@@ -6,6 +6,8 @@ import { ProductQueryDto } from "./dto/product-query.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { Product } from "./entities/product.entity";
 import slugify from "slugify";
+import { PaginationHelper } from "../shared/helpers";
+import { PaginatedResponseDto } from "../shared/dtos/paginated-response.dto";
 
 @Injectable()
 export class ProductsService {
@@ -26,17 +28,18 @@ export class ProductsService {
     return this.productRepository.save(product);
   }
 
-  async findAll(query: ProductQueryDto): Promise<[Product[], number]> {
+  async findAll(
+    query: ProductQueryDto,
+  ): Promise<PaginatedResponseDto<Product>> {
     const {
       categoryId,
-      promotionId,
       minPrice,
       maxPrice,
-      isActive,
-      inStock,
+      isActive = true,
+      inStock = true,
       search,
-      page = 1,
-      limit = 10,
+      page,
+      limit,
       sortBy = "createdAt",
       sortOrder = "DESC",
     } = query;
@@ -45,18 +48,11 @@ export class ProductsService {
 
     const queryBuilder = this.productRepository
       .createQueryBuilder("product")
-      .leftJoinAndSelect("product.category", "category")
-      .leftJoinAndSelect("product.promotion", "promotion");
+      .leftJoinAndSelect("product.category", "category");
 
     if (categoryId) {
       queryBuilder.andWhere("product.category_id = :categoryId", {
         categoryId,
-      });
-    }
-
-    if (promotionId) {
-      queryBuilder.andWhere("product.promotion_id = :promotionId", {
-        promotionId,
       });
     }
 
@@ -99,7 +95,8 @@ export class ProductsService {
     queryBuilder.skip(skip).take(limit);
     queryBuilder.orderBy(`product.${sortBy}`, sortOrder);
 
-    return queryBuilder.getManyAndCount();
+    const [products, total] = await queryBuilder.getManyAndCount();
+    return PaginationHelper.createPaginatedResponse(products, total, query);
   }
 
   async findOne(id: string): Promise<Product> {
@@ -118,7 +115,7 @@ export class ProductsService {
   async findBySlug(slug: string): Promise<Product> {
     const product = await this.productRepository.findOne({
       where: { slug },
-      relations: ["category", "promotion"],
+      relations: ["category"],
     });
 
     if (!product) {

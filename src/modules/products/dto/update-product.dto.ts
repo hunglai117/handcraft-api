@@ -7,10 +7,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   MaxLength,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Expose, Type } from "class-transformer";
 
 export class UpdateProductDto {
   @ApiPropertyOptional({
@@ -20,6 +19,7 @@ export class UpdateProductDto {
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @Expose()
   name?: string;
 
   @ApiPropertyOptional({
@@ -29,6 +29,7 @@ export class UpdateProductDto {
   @IsString()
   @IsOptional()
   @MaxLength(255)
+  @Expose()
   slug?: string;
 
   @ApiPropertyOptional({
@@ -37,14 +38,15 @@ export class UpdateProductDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   description?: string;
 
   @ApiPropertyOptional({
     description: "Category ID of the product",
     example: "550e8400-e29b-41d4-a716-446655440000",
   })
-  @IsUUID()
   @IsOptional()
+  @Expose()
   category_id?: string;
 
   @ApiPropertyOptional({
@@ -53,6 +55,7 @@ export class UpdateProductDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
+  @Expose()
   price?: number;
 
   @ApiPropertyOptional({
@@ -61,6 +64,7 @@ export class UpdateProductDto {
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
+  @Expose()
   originalPrice?: number;
 
   @ApiPropertyOptional({
@@ -70,6 +74,7 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(3)
   @IsOptional()
+  @Expose()
   currency?: string;
 
   @ApiPropertyOptional({
@@ -79,6 +84,7 @@ export class UpdateProductDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  @Expose()
   stockQuantity?: number;
 
   @ApiPropertyOptional({
@@ -88,6 +94,7 @@ export class UpdateProductDto {
   @IsString()
   @MaxLength(100)
   @IsOptional()
+  @Expose()
   sku?: string;
 
   @ApiPropertyOptional({
@@ -99,6 +106,7 @@ export class UpdateProductDto {
   })
   @IsArray()
   @IsOptional()
+  @Expose()
   images?: string[];
 
   @ApiPropertyOptional({
@@ -111,6 +119,8 @@ export class UpdateProductDto {
   })
   @IsJSON()
   @IsOptional()
+  @Expose()
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   specifications?: Record<string, any>;
 
@@ -120,6 +130,7 @@ export class UpdateProductDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   materials?: string;
 
   @ApiPropertyOptional({
@@ -128,6 +139,7 @@ export class UpdateProductDto {
   })
   @IsString()
   @IsOptional()
+  @Expose()
   tags?: string;
 
   @ApiPropertyOptional({
@@ -136,14 +148,15 @@ export class UpdateProductDto {
   })
   @IsBoolean()
   @IsOptional()
+  @Expose()
   isActive?: boolean;
 
   @ApiPropertyOptional({
     description: "Promotion ID",
     example: "550e8400-e29b-41d4-a716-446655440000",
   })
-  @IsUUID()
   @IsOptional()
+  @Expose()
   promotion_id?: string;
 
   @ApiPropertyOptional({
@@ -155,5 +168,6 @@ export class UpdateProductDto {
   })
   @IsArray()
   @IsOptional()
+  @Expose()
   relatedProductIds?: string[];
 }

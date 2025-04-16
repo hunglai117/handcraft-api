@@ -10,7 +10,8 @@ import { PaginationQueryDto } from "../shared/dtos/pagination.dto";
 import { CreateUserRequestDto } from "./dto/create-user.dto";
 import { UpdateProfileRequestDto } from "./dto/update-profile.dto";
 import { User } from "./entities/user.entity";
-import { PaginatedUserResponseDto } from "./dto/get-all-user.dto";
+import { PaginatedResponseDto } from "../shared/dtos/paginated-response.dto";
+import { PaginationHelper } from "../shared/helpers";
 
 @Injectable()
 export class UsersService {
@@ -36,7 +37,9 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  async findAll(query: PaginationQueryDto): Promise<PaginatedUserResponseDto> {
+  async findAll(
+    query: PaginationQueryDto,
+  ): Promise<PaginatedResponseDto<User>> {
     const { page, limit } = query;
     const skip = (page - 1) * limit;
 
@@ -46,17 +49,7 @@ export class UsersService {
       order: { createdAt: "DESC" },
     });
 
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      items: users,
-      total,
-      page,
-      limit,
-      totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1,
-    };
+    return PaginationHelper.createPaginatedResponse(users, total, query);
   }
 
   async findById(id: string): Promise<User> {
