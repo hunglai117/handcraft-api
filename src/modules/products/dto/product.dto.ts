@@ -33,14 +33,6 @@ export class ProductDto {
   description?: string;
 
   @ApiPropertyOptional({
-    description: "Category ID",
-    example: "1234567890123456789",
-    type: String,
-  })
-  @Expose()
-  category_id?: string;
-
-  @ApiPropertyOptional({
     description: "Category information",
   })
   @Expose()
