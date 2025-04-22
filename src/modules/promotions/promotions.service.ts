@@ -5,81 +5,30 @@ import {
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Category } from "../categories/entities/category.entity";
-import { Product } from "../products/entities/product.entity";
 import { CreatePromotionDto } from "./dto/create-promotion.dto";
 import { UpdatePromotionDto } from "./dto/update-promotion.dto";
-import { Promotion, TargetScope } from "./entities/promotion.entity";
+import { Promotion } from "./entities/promotion.entity";
 
 @Injectable()
 export class PromotionsService {
   constructor(
     @InjectRepository(Promotion)
-    private promotionRepository: Repository<Promotion>,
-    @InjectRepository(Category)
-    private categoryRepository: Repository<Category>,
-    @InjectRepository(Product)
-    private productRepository: Repository<Product>,
+    private promotionRepository: Repository<Promotion>
   ) {}
 
   async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
-    if (createPromotionDto.startDate >= createPromotionDto.endDate) {
+    if (createPromotionDto.startDate && createPromotionDto.endDate && 
+        createPromotionDto.startDate >= createPromotionDto.endDate) {
       throw new BadRequestException("End date must be after start date");
     }
 
     const promotion = this.promotionRepository.create(createPromotionDto);
-
-    if (createPromotionDto.targetScope === TargetScope.CATEGORY) {
-      if (
-        !createPromotionDto.categoryIds ||
-        createPromotionDto.categoryIds.length === 0
-      ) {
-        throw new BadRequestException(
-          "Category IDs are required when target scope is category",
-        );
-      }
-
-      promotion.categories = await Promise.all(
-        createPromotionDto.categoryIds.map(async (id) => {
-          const category = await this.categoryRepository.findOne({
-            where: { id },
-          });
-          if (!category) {
-            throw new NotFoundException(`Category with ID ${id} not found`);
-          }
-          return category;
-        }),
-      );
-    } else if (createPromotionDto.targetScope === TargetScope.PRODUCT) {
-      if (
-        !createPromotionDto.productIds ||
-        createPromotionDto.productIds.length === 0
-      ) {
-        throw new BadRequestException(
-          "Product IDs are required when target scope is product",
-        );
-      }
-
-      promotion.products = await Promise.all(
-        createPromotionDto.productIds.map(async (id) => {
-          const product = await this.productRepository.findOne({
-            where: { id },
-          });
-          if (!product) {
-            throw new NotFoundException(`Product with ID ${id} not found`);
-          }
-          return product;
-        }),
-      );
-    }
-
     return this.promotionRepository.save(promotion);
   }
 
   async findOne(id: string): Promise<Promotion> {
     const promotion = await this.promotionRepository.findOne({
       where: { id },
-      relations: ["categories", "products"],
     });
 
     if (!promotion) {
@@ -91,8 +40,7 @@ export class PromotionsService {
 
   async findByCode(code: string): Promise<Promotion> {
     const promotion = await this.promotionRepository.findOne({
-      where: { code },
-      relations: ["categories", "products"],
+      where: { promoCode: code },
     });
 
     if (!promotion) {
@@ -113,51 +61,16 @@ export class PromotionsService {
         throw new BadRequestException("End date must be after start date");
       }
     } else if (
-      updatePromotionDto.startDate &&
+      updatePromotionDto.startDate && promotion.endDate &&
       updatePromotionDto.startDate >= promotion.endDate
     ) {
       throw new BadRequestException("Start date must be before end date");
     } else if (
-      updatePromotionDto.endDate &&
+      updatePromotionDto.endDate && promotion.startDate &&
       promotion.startDate >= updatePromotionDto.endDate
     ) {
       throw new BadRequestException("End date must be after start date");
     }
-
-    if (
-      updatePromotionDto.targetScope === TargetScope.CATEGORY &&
-      updatePromotionDto.categoryIds
-    ) {
-      promotion.categories = await Promise.all(
-        updatePromotionDto.categoryIds.map(async (id) => {
-          const category = await this.categoryRepository.findOne({
-            where: { id },
-          });
-          if (!category) {
-            throw new NotFoundException(`Category with ID ${id} not found`);
-          }
-          return category;
-        }),
-      );
-    } else if (
-      updatePromotionDto.targetScope === TargetScope.PRODUCT &&
-      updatePromotionDto.productIds
-    ) {
-      promotion.products = await Promise.all(
-        updatePromotionDto.productIds.map(async (id) => {
-          const product = await this.productRepository.findOne({
-            where: { id },
-          });
-          if (!product) {
-            throw new NotFoundException(`Product with ID ${id} not found`);
-          }
-          return product;
-        }),
-      );
-    }
-
-    delete updatePromotionDto.categoryIds;
-    delete updatePromotionDto.productIds;
 
     Object.assign(promotion, updatePromotionDto);
 
@@ -190,7 +103,7 @@ export class PromotionsService {
         return { valid: false, message: "Promotion has not started yet" };
       }
 
-      if (promotion.endDate < now) {
+      if (promotion.endDate && promotion.endDate < now) {
         return { valid: false, message: "Promotion has expired" };
       }
 

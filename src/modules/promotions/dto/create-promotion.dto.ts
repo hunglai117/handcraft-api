@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import {
-  IsArray,
   IsDate,
   IsDecimal,
   IsEnum,
@@ -12,7 +11,7 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
-import { DiscountType, TargetScope } from "../entities/promotion.entity";
+import { PromotionType } from "../entities/promotion.entity";
 
 export class CreatePromotionDto {
   @ApiProperty({
@@ -42,20 +41,20 @@ export class CreatePromotionDto {
   @MaxLength(50)
   @IsOptional()
   @Expose()
-  code?: string;
+  promoCode?: string;
 
   @ApiProperty({
-    description: "Discount type",
-    enum: DiscountType,
-    example: DiscountType.PERCENTAGE,
+    description: "Promotion type",
+    enum: PromotionType,
+    example: PromotionType.PERCENTAGE_DISCOUNT,
   })
-  @IsEnum(DiscountType)
+  @IsEnum(PromotionType)
   @IsNotEmpty()
   @Expose()
-  discountType: DiscountType;
+  type: PromotionType;
 
   @ApiProperty({
-    description: "Discount value (percentage or fixed amount)",
+    description: "Discount value (percentage, fixed amount, etc.)",
     example: 20,
   })
   @IsDecimal({ decimal_digits: "2" })
@@ -63,15 +62,15 @@ export class CreatePromotionDto {
   @Expose()
   discountValue: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: "Promotion start date",
     example: "2023-06-01T00:00:00Z",
   })
   @IsDate()
   @Type(() => Date)
-  @IsNotEmpty()
+  @IsOptional()
   @Expose()
-  startDate: Date;
+  startDate?: Date;
 
   @ApiProperty({
     description: "Promotion end date",
@@ -84,23 +83,13 @@ export class CreatePromotionDto {
   endDate: Date;
 
   @ApiPropertyOptional({
-    description: "Minimum order value required to use promotion",
+    description: "Minimum order amount required to use promotion",
     example: 500000,
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
   @Expose()
-  minOrderValue?: number;
-
-  @ApiProperty({
-    description: "Target scope for the promotion",
-    enum: TargetScope,
-    example: TargetScope.CATEGORY,
-  })
-  @IsEnum(TargetScope)
-  @IsNotEmpty()
-  @Expose()
-  targetScope: TargetScope;
+  minimumOrderAmount?: number;
 
   @ApiPropertyOptional({
     description: "Maximum number of times this promotion can be used",
@@ -121,24 +110,4 @@ export class CreatePromotionDto {
   @IsOptional()
   @Expose()
   usageLimitPerUser?: number;
-
-  @ApiPropertyOptional({
-    description:
-      'Category IDs this promotion applies to (when target_scope is "category")',
-    example: ["550e8400-e29b-41d4-a716-446655440000"],
-  })
-  @IsArray()
-  @IsOptional()
-  @Expose()
-  categoryIds?: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Product IDs this promotion applies to (when target_scope is "product")',
-    example: ["550e8400-e29b-41d4-a716-446655440000"],
-  })
-  @IsArray()
-  @IsOptional()
-  @Expose()
-  productIds?: string[];
 }

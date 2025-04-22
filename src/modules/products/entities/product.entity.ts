@@ -1,11 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
 import { Category } from "../../categories/entities/category.entity";
 import { BaseEntity } from "../../../common/entities/base.entity";
 
@@ -60,12 +53,6 @@ export class Product extends BaseEntity {
 
   @Column({ default: true, name: "is_active" })
   isActive: boolean;
-
-  @CreateDateColumn({ name: "created_at" })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: "updated_at" })
-  updatedAt: Date;
 
   @Column({ type: "float", default: 0 })
   rating: number;

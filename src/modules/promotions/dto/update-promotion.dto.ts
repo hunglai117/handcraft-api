@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import {
-  IsArray,
   IsDate,
   IsDecimal,
   IsEnum,
@@ -12,7 +11,7 @@ import {
   Min,
 } from "class-validator";
 import { ToBoolean } from "src/common/decorators/dto";
-import { DiscountType, TargetScope } from "../entities/promotion.entity";
+import { PromotionType } from "../entities/promotion.entity";
 
 export class UpdatePromotionDto {
   @ApiPropertyOptional({
@@ -42,20 +41,20 @@ export class UpdatePromotionDto {
   @MaxLength(50)
   @IsOptional()
   @Expose()
-  code?: string;
+  promoCode?: string;
 
   @ApiPropertyOptional({
-    description: "Discount type",
-    enum: DiscountType,
-    example: DiscountType.PERCENTAGE,
+    description: "Promotion type",
+    enum: PromotionType,
+    example: PromotionType.PERCENTAGE_DISCOUNT,
   })
-  @IsEnum(DiscountType)
+  @IsEnum(PromotionType)
   @IsOptional()
   @Expose()
-  discountType?: DiscountType;
+  type?: PromotionType;
 
   @ApiPropertyOptional({
-    description: "Discount value (percentage or fixed amount)",
+    description: "Discount value (percentage, fixed amount, etc.)",
     example: 20,
   })
   @IsDecimal({ decimal_digits: "2" })
@@ -84,23 +83,13 @@ export class UpdatePromotionDto {
   endDate?: Date;
 
   @ApiPropertyOptional({
-    description: "Minimum order value required to use promotion",
+    description: "Minimum order amount required to use promotion",
     example: 500000,
   })
   @IsDecimal({ decimal_digits: "2" })
   @IsOptional()
   @Expose()
-  minOrderValue?: number;
-
-  @ApiPropertyOptional({
-    description: "Target scope for the promotion",
-    enum: TargetScope,
-    example: TargetScope.CATEGORY,
-  })
-  @IsEnum(TargetScope)
-  @IsOptional()
-  @Expose()
-  targetScope?: TargetScope;
+  minimumOrderAmount?: number;
 
   @ApiPropertyOptional({
     description: "Maximum number of times this promotion can be used",
@@ -130,24 +119,4 @@ export class UpdatePromotionDto {
   @ToBoolean()
   @Expose()
   isActive?: boolean;
-
-  @ApiPropertyOptional({
-    description:
-      'Category IDs this promotion applies to (when target_scope is "category")',
-    example: ["550e8400-e29b-41d4-a716-446655440000"],
-  })
-  @IsArray()
-  @IsOptional()
-  @Expose()
-  categoryIds?: string[];
-
-  @ApiPropertyOptional({
-    description:
-      'Product IDs this promotion applies to (when target_scope is "product")',
-    example: ["550e8400-e29b-41d4-a716-446655440000"],
-  })
-  @IsArray()
-  @IsOptional()
-  @Expose()
-  productIds?: string[];
 }

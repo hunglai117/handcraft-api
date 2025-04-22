@@ -1,4 +1,4 @@
-import { Column, Entity, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Column, Entity } from "typeorm";
 import { BaseEntity } from "../../../common/entities/base.entity";
 
 export enum UserRole {
@@ -44,10 +44,4 @@ export class User extends BaseEntity {
 
   @Column({ nullable: true, length: 100 })
   country: string;
-
-  @CreateDateColumn({ name: "created_at" })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: "updated_at" })
-  updatedAt: Date;
 }

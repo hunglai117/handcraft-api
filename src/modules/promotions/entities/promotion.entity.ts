@@ -1,24 +1,11 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity } from "typeorm";
 import { BaseEntity } from "../../../common/entities/base.entity";
-import { Category } from "../../categories/entities/category.entity";
-import { Product } from "../../products/entities/product.entity";
 
-export enum DiscountType {
-  PERCENTAGE = "percentage",
-  FIXED_AMOUNT = "fixed_amount",
-}
-
-export enum TargetScope {
-  ALL = "all",
-  CATEGORY = "category",
-  PRODUCT = "product",
+export enum PromotionType {
+  PERCENTAGE_DISCOUNT = "PERCENTAGE_DISCOUNT",
+  FIXED_AMOUNT_DISCOUNT = "FIXED_AMOUNT_DISCOUNT",
+  FREE_SHIPPING = "FREE_SHIPPING",
+  BUY_X_GET_Y_FREE = "BUY_X_GET_Y_FREE"
 }
 
 @Entity("promotions")
@@ -29,93 +16,56 @@ export class Promotion extends BaseEntity {
   @Column({ type: "text", nullable: true })
   description: string;
 
-  @Column({ length: 50, nullable: true, unique: true })
-  code: string;
+  @Column({ length: 50, nullable: true, unique: true, name: "promo_code" })
+  promoCode: string;
 
   @Column({
     type: "enum",
-    enum: DiscountType,
-    default: DiscountType.PERCENTAGE,
-    name: "discount_type",
+    enum: PromotionType,
+    default: PromotionType.PERCENTAGE_DISCOUNT,
+    name: "type"
   })
-  discountType: DiscountType;
+  type: PromotionType;
 
   @Column({
     type: "decimal",
-    precision: 15,
+    precision: 10,
     scale: 2,
     nullable: false,
-    name: "discount_value",
+    default: 0.00,
+    name: "discount_value"
   })
   discountValue: number;
 
-  @Column({ type: "timestamp", name: "start_date" })
-  startDate: Date;
-
-  @Column({ type: "timestamp", name: "end_date" })
-  endDate: Date;
-
   @Column({
     type: "decimal",
-    precision: 15,
+    precision: 10,
     scale: 2,
     nullable: true,
-    name: "min_order_value",
+    name: "minimum_order_amount"
   })
-  minOrderValue: number;
+  minimumOrderAmount: number;
 
-  @Column({
-    type: "enum",
-    enum: TargetScope,
-    default: TargetScope.ALL,
-    name: "target_scope",
+  @Column({ 
+    type: "timestamp", 
+    name: "start_date", 
+    default: () => "CURRENT_TIMESTAMP" 
   })
-  targetScope: TargetScope;
+  startDate: Date;
+
+  @Column({ 
+    type: "timestamp", 
+    name: "end_date", 
+    nullable: true 
+  })
+  endDate: Date;
+
+  @Column({ default: true, name: "is_active" })
+  isActive: boolean;
 
   @Column({ nullable: true, name: "usage_limit" })
   usageLimit: number;
 
   @Column({ nullable: true, name: "usage_limit_per_user" })
   usageLimitPerUser: number;
-
-  @Column({ default: true, name: "is_active" })
-  isActive: boolean;
-
-  @CreateDateColumn({ name: "created_at" })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: "updated_at" })
-  updatedAt: Date;
-
-  @ManyToMany(() => Category)
-  @JoinTable({
-    name: "promotion_categories",
-    joinColumn: {
-      name: "promotion_id",
-      referencedColumnName: "id",
-      foreignKeyConstraintName: "fk_promotion_categories_promotion_id",
-    },
-    inverseJoinColumn: {
-      name: "category_id",
-      referencedColumnName: "id",
-      foreignKeyConstraintName: "fk_promotion_categories_category_id",
-    },
-  })
-  categories: Category[];
-
-  @ManyToMany(() => Product)
-  @JoinTable({
-    name: "promotion_products",
-    joinColumn: {
-      name: "promotion_id",
-      referencedColumnName: "id",
-      foreignKeyConstraintName: "fk_promotion_products_promotion_id",
-    },
-    inverseJoinColumn: {
-      name: "product_id",
-      referencedColumnName: "id",
-      foreignKeyConstraintName: "fk_promotion_products_product_id",
-    },
-  })
-  products: Product[];
 }

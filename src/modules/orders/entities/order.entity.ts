@@ -1,12 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  UpdateDateColumn,
-} from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from "typeorm";
 import { BaseEntity } from "../../../common/entities/base.entity";
 import { User } from "../../users/entities/user.entity";
 import { OrderStatus } from "./order-status.enum";
@@ -66,12 +58,6 @@ export class Order extends BaseEntity {
 
   @Column({ nullable: true, type: "text", name: "notes" })
   notes: string;
-
-  @CreateDateColumn({ name: "created_at" })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: "updated_at" })
-  updatedAt: Date;
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
     cascade: true,

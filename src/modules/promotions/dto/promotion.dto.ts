@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
+import { PromotionType } from "../entities/promotion.entity";
 
 export class PromotionDto {
   @ApiProperty({
@@ -24,11 +25,17 @@ export class PromotionDto {
   @Expose()
   description: string;
 
+  @ApiPropertyOptional({
+    description: "Promotion code customers can use at checkout",
+    example: "BLACKFRIDAY50",
+  })
+  @Expose()
+  promoCode: string;
+
   @ApiProperty({
     description: "Start date of the promotion",
     example: "2023-11-24T00:00:00Z",
   })
-  @Expose()
   @Expose()
   startDate: Date;
 
@@ -37,16 +44,15 @@ export class PromotionDto {
     example: "2023-11-30T23:59:59Z",
   })
   @Expose()
-  @Expose()
   endDate: Date;
 
   @ApiProperty({
-    description: "Target scope of the promotion",
-    enum: ["ALL", "CATEGORY", "PRODUCT"],
-    example: "CATEGORY",
+    description: "Type of promotion",
+    enum: PromotionType,
+    example: PromotionType.PERCENTAGE_DISCOUNT,
   })
   @Expose()
-  discountType: string;
+  type: PromotionType;
 
   @ApiProperty({
     description: "Value of the discount",
@@ -54,6 +60,27 @@ export class PromotionDto {
   })
   @Expose()
   discountValue: number;
+
+  @ApiPropertyOptional({
+    description: "Minimum order amount required to use promotion",
+    example: 100.00,
+  })
+  @Expose()
+  minimumOrderAmount: number;
+
+  @ApiPropertyOptional({
+    description: "Maximum number of times this promotion can be used",
+    example: 1000,
+  })
+  @Expose()
+  usageLimit: number;
+
+  @ApiPropertyOptional({
+    description: "Maximum number of times a user can use this promotion",
+    example: 1,
+  })
+  @Expose()
+  usageLimitPerUser: number;
 
   @ApiProperty({
     description: "Indicates if the promotion is active",
