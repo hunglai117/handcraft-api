@@ -13,12 +13,15 @@ import { Promotion } from "./entities/promotion.entity";
 export class PromotionsService {
   constructor(
     @InjectRepository(Promotion)
-    private promotionRepository: Repository<Promotion>
+    private promotionRepository: Repository<Promotion>,
   ) {}
 
   async create(createPromotionDto: CreatePromotionDto): Promise<Promotion> {
-    if (createPromotionDto.startDate && createPromotionDto.endDate && 
-        createPromotionDto.startDate >= createPromotionDto.endDate) {
+    if (
+      createPromotionDto.startDate &&
+      createPromotionDto.endDate &&
+      createPromotionDto.startDate >= createPromotionDto.endDate
+    ) {
       throw new BadRequestException("End date must be after start date");
     }
 
@@ -61,12 +64,14 @@ export class PromotionsService {
         throw new BadRequestException("End date must be after start date");
       }
     } else if (
-      updatePromotionDto.startDate && promotion.endDate &&
+      updatePromotionDto.startDate &&
+      promotion.endDate &&
       updatePromotionDto.startDate >= promotion.endDate
     ) {
       throw new BadRequestException("Start date must be before end date");
     } else if (
-      updatePromotionDto.endDate && promotion.startDate &&
+      updatePromotionDto.endDate &&
+      promotion.startDate &&
       promotion.startDate >= updatePromotionDto.endDate
     ) {
       throw new BadRequestException("End date must be after start date");

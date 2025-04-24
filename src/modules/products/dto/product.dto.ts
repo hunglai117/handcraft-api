@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { CategoryDto } from "../../categories/dto/category.dto";
+import { ProductVariantDto } from "./product-variant.dto";
+import { ProductOptionDto } from "./product-option.dto";
 
 export class ProductDto {
   @ApiProperty({
@@ -40,39 +42,11 @@ export class ProductDto {
   category?: CategoryDto;
 
   @ApiProperty({
-    description: "Current price",
-    example: 299000,
-  })
-  @Expose()
-  price: number;
-
-  @ApiProperty({
-    description: "Original price before any discounts",
-    example: 350000,
-  })
-  @Expose()
-  originalPrice: number;
-
-  @ApiProperty({
     description: "Currency code",
     example: "VND",
   })
   @Expose()
   currency: string;
-
-  @ApiProperty({
-    description: "Available stock quantity",
-    example: 25,
-  })
-  @Expose()
-  stockQuantity: number;
-
-  @ApiPropertyOptional({
-    description: "SKU (Stock Keeping Unit)",
-    example: "HWB-001-OAK",
-  })
-  @Expose()
-  sku?: string;
 
   @ApiPropertyOptional({
     description: "Product images",
@@ -85,61 +59,42 @@ export class ProductDto {
   @Expose()
   images?: string[];
 
-  @ApiPropertyOptional({
-    description: "Product specifications",
-    example: {
-      dimensions: "10x10x5 cm",
-      weight: "250g",
-      color: "Natural Brown",
-    },
-  })
-  @Expose()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  specifications?: Record<string, any>;
-
-  @ApiPropertyOptional({
-    description: "Product tags",
-    example: ["wood", "kitchen", "handmade", "eco-friendly"],
-    isArray: true,
-  })
-  @Expose()
-  tags?: string[];
-
   @ApiProperty({
-    description: "Is the product active",
+    description: "Whether the product has price variations",
     example: true,
   })
   @Expose()
-  isActive: boolean;
+  priceVaries: boolean;
+
+  @ApiProperty({
+    description: "Minimum price across all variants",
+    example: 299000,
+  })
+  @Expose()
+  priceMin: number;
+
+  @ApiProperty({
+    description: "Maximum price across all variants",
+    example: 350000,
+  })
+  @Expose()
+  priceMax: number;
 
   @ApiPropertyOptional({
-    description: "Related product IDs",
-    example: ["1234567890123456789", "1234567890123456790"],
-    isArray: true,
+    description: "Product variants",
+    type: [ProductVariantDto],
   })
   @Expose()
-  relatedProductIds?: string[];
+  @Type(() => ProductVariantDto)
+  variants?: ProductVariantDto[];
 
-  @ApiProperty({
-    description: "Product rating",
-    example: 4.5,
+  @ApiPropertyOptional({
+    description: "Product options",
+    type: [ProductOptionDto],
   })
   @Expose()
-  rating: number;
-
-  @ApiProperty({
-    description: "Number of reviews",
-    example: 42,
-  })
-  @Expose()
-  reviewCount: number;
-
-  @ApiProperty({
-    description: "Number of purchases",
-    example: 85,
-  })
-  @Expose()
-  purchaseCount: number;
+  @Type(() => ProductOptionDto)
+  options?: ProductOptionDto[];
 
   @ApiProperty({
     description: "Created date and time",

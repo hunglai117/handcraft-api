@@ -1,113 +1,94 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { OrderStatus } from "../entities/order-status.enum";
-import { PaymentMethod } from "../entities/payment-method.enum";
-import { OrderItemResponseDto } from "./order-item.dto";
+import { OrderItemDto } from "./order-item.dto";
+import { OrderPromotionDto } from "./order-promotion.dto";
+import { PaymentTransactionDto } from "./payment-transaction.dto";
 
 export class OrderDto {
-  @Expose()
   @ApiProperty({
     description: "Order unique identifier",
     example: "1234567890123456789",
   })
+  @Expose()
   id: string;
 
-  @Expose()
   @ApiProperty({
-    description: "User ID",
-    example: "1234567890123456789",
+    description: "User who placed the order",
+    example: "9876543210987654321",
   })
+  @Expose()
   userId: string;
 
-  @Expose()
   @ApiProperty({
-    description: "Order status",
-    enum: OrderStatus,
-    example: OrderStatus.PENDING,
+    description: "Current order status",
+    example: "pending",
+    enum: ["pending", "processing", "shipped", "delivered", "cancelled"],
   })
-  status: OrderStatus;
-
   @Expose()
-  @ApiProperty({
-    description: "Payment method",
-    enum: PaymentMethod,
-    example: PaymentMethod.CREDIT_CARD,
-  })
-  paymentMethod: PaymentMethod;
+  orderStatus: string;
 
-  @Expose()
   @ApiProperty({
     description: "Total order amount",
-    example: 599000,
+    example: 150000,
   })
+  @Expose()
   totalAmount: number;
 
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Shipping address",
-    example: "123 Main St, Apt 4B",
-  })
-  shippingAddress?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Shipping city",
-    example: "New York",
-  })
-  shippingCity?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Shipping state/province",
-    example: "NY",
-  })
-  shippingState?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Shipping zip/postal code",
-    example: "10001",
-  })
-  shippingZip?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Shipping country",
-    example: "USA",
-  })
-  shippingCountry?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Tracking number",
-    example: "1Z999AA10123456784",
-  })
-  trackingNumber?: string;
-
-  @Expose()
-  @ApiPropertyOptional({
-    description: "Additional notes for the order",
-    example: "Please deliver in the afternoon",
-  })
-  notes?: string;
-
-  @Expose()
   @ApiProperty({
-    description: "Order created date",
+    description: "Current payment status",
+    example: "unpaid",
+    enum: ["unpaid", "paid", "refunded", "partially_refunded", "failed"],
   })
+  @Expose()
+  paymentStatus: string;
+
+  @ApiProperty({
+    description: "Shipping address",
+    type: Object,
+  })
+  @Expose()
+  shippingAddress: Record<string, any>;
+
+  @ApiProperty({
+    description: "Billing address",
+    type: Object,
+  })
+  @Expose()
+  billingAddress: Record<string, any>;
+
+  @ApiProperty({
+    description: "Items in the order",
+    type: [OrderItemDto],
+  })
+  @Expose()
+  @Type(() => OrderItemDto)
+  orderItems: OrderItemDto[];
+
+  @ApiPropertyOptional({
+    description: "Applied promotions",
+    type: [OrderPromotionDto],
+  })
+  @Expose()
+  @Type(() => OrderPromotionDto)
+  orderPromotions?: OrderPromotionDto[];
+
+  @ApiPropertyOptional({
+    description: "Payment transactions",
+    type: [PaymentTransactionDto],
+  })
+  @Expose()
+  @Type(() => PaymentTransactionDto)
+  paymentTransactions?: PaymentTransactionDto[];
+
+  @ApiProperty({
+    description: "Created timestamp",
+  })
+  @Expose()
   createdAt: Date;
 
-  @Expose()
   @ApiProperty({
-    description: "Order last updated date",
+    description: "Last updated timestamp",
   })
+  @Expose()
   updatedAt: Date;
-
-  @Expose()
-  @ApiProperty({
-    description: "Order items",
-    type: [OrderItemResponseDto],
-  })
-  @Type(() => OrderItemResponseDto)
-  orderItems: OrderItemResponseDto[];
 }

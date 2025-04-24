@@ -25,6 +25,16 @@ export class UpdateCategoryDto {
   pathUrl?: string;
 
   @ApiPropertyOptional({
+    description: "Category image URL or path",
+    example: "https://example.com/images/home-decor.jpg",
+    nullable: true,
+  })
+  @IsString()
+  @IsOptional()
+  @Expose()
+  image?: string;
+
+  @ApiPropertyOptional({
     description: "Parent category ID",
     example: "550e8400-e29b-41d4-a716-446655440000",
     nullable: true,

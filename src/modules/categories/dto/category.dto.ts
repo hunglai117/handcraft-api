@@ -25,6 +25,14 @@ export class CategoryDto {
   pathUrl: string;
 
   @ApiPropertyOptional({
+    description: "Category image URL or path",
+    example: "https://example.com/images/home-decor.jpg",
+    nullable: true,
+  })
+  @Expose()
+  image?: string;
+
+  @ApiPropertyOptional({
     description: "Parent category",
     nullable: true,
   })

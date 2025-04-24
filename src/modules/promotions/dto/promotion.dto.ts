@@ -63,7 +63,7 @@ export class PromotionDto {
 
   @ApiPropertyOptional({
     description: "Minimum order amount required to use promotion",
-    example: 100.00,
+    example: 100.0,
   })
   @Expose()
   minimumOrderAmount: number;

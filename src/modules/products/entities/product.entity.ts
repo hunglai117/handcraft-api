@@ -1,6 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from "typeorm";
 import { Category } from "../../categories/entities/category.entity";
 import { BaseEntity } from "../../../common/entities/base.entity";
+import { ProductVariant } from "./product-variant.entity";
+import { ProductOption } from "./product-option.entity";
 
 @Entity("products")
 export class Product extends BaseEntity {
@@ -20,49 +22,35 @@ export class Product extends BaseEntity {
   @JoinColumn({ name: "category_id" })
   category: Category;
 
-  @Column({ type: "decimal", precision: 15, scale: 2, nullable: false })
-  price: number;
+  @Column({ length: 10, default: "VND" })
+  currency: string;
+
+  @Column({ type: "jsonb", nullable: true })
+  images: string[];
 
   @Column({
     type: "decimal",
-    precision: 15,
+    precision: 12,
     scale: 2,
-    nullable: false,
-    name: "original_price",
+    nullable: true,
+    name: "price_min",
   })
-  originalPrice: number;
+  priceMin: number;
 
-  @Column({ length: 3, default: "VND" })
-  currency: string;
+  @Column({
+    type: "decimal",
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    name: "price_max",
+  })
+  priceMax: number;
 
-  @Column({ default: 0, name: "stock_quantity" })
-  stockQuantity: number;
+  @OneToMany(() => ProductVariant, (variant) => variant.product, {
+    cascade: true,
+  })
+  variants: ProductVariant[];
 
-  @Column({ length: 100, nullable: true, unique: true })
-  sku: string;
-
-  @Column({ type: "simple-array", nullable: true })
-  images: string[];
-
-  @Column({ type: "json", nullable: true })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  specifications: Record<string, any>;
-
-  @Column({ type: "simple-array", nullable: true })
-  tags: string[];
-
-  @Column({ default: true, name: "is_active" })
-  isActive: boolean;
-
-  @Column({ type: "float", default: 0 })
-  rating: number;
-
-  @Column({ default: 0, name: "review_count" })
-  reviewCount: number;
-
-  @Column({ type: "simple-array", nullable: true, name: "related_product_ids" })
-  relatedProductIds: string[];
-
-  @Column({ default: 0, name: "purchase_count" })
-  purchaseCount: number;
+  @OneToMany(() => ProductOption, (option) => option.product, { cascade: true })
+  options: ProductOption[];
 }

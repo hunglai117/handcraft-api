@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne } from "typeorm";
 import { BaseEntity } from "../../../common/entities/base.entity";
 import { Order } from "./order.entity";
-import { Product } from "../../products/entities/product.entity";
+import { ProductVariant } from "../../products/entities/product-variant.entity";
 
 @Entity("order_items")
 export class OrderItem extends BaseEntity {
@@ -14,19 +14,19 @@ export class OrderItem extends BaseEntity {
   @JoinColumn({ name: "order_id" })
   order: Order;
 
-  @Column({ type: "bigint", nullable: false, name: "product_id" })
-  productId: string;
+  @Column({ type: "bigint", nullable: false, name: "product_variant_id" })
+  productVariantId: string;
 
-  @ManyToOne(() => Product)
-  @JoinColumn({ name: "product_id" })
-  product: Product;
+  @ManyToOne(() => ProductVariant)
+  @JoinColumn({ name: "product_variant_id" })
+  productVariant: ProductVariant;
 
   @Column({ nullable: false })
   quantity: number;
 
   @Column({
     type: "decimal",
-    precision: 15,
+    precision: 12,
     scale: 2,
     nullable: false,
     name: "unit_price",
@@ -35,16 +35,10 @@ export class OrderItem extends BaseEntity {
 
   @Column({
     type: "decimal",
-    precision: 15,
+    precision: 12,
     scale: 2,
-    nullable: true,
-    name: "discount_amount",
+    nullable: false,
+    name: "total_price",
   })
-  discountAmount: number;
-
-  @Column({ nullable: true, name: "product_name" })
-  productName: string;
-
-  @Column({ nullable: true, type: "text", name: "product_notes" })
-  productNotes: string;
+  totalPrice: number;
 }

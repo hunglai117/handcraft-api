@@ -1,34 +1,70 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { ProductVariantDto } from "../../products/dto/product-variant.dto";
 
 export class OrderItemDto {
   @ApiProperty({
-    description: "Product ID",
+    description: "Order item unique identifier",
     example: "1234567890123456789",
   })
-  @IsNotEmpty()
   @Expose()
-  productId: string;
+  id: string;
 
   @ApiProperty({
-    description: "Quantity of product",
+    description: "Order this item belongs to",
+    example: "9876543210987654321",
+  })
+  @Expose()
+  orderId: string;
+
+  @ApiProperty({
+    description: "Product variant identifier",
+    example: "5555555555555555555",
+  })
+  @Expose()
+  productVariantId: string;
+
+  @ApiProperty({
+    description: "Product variant details",
+    type: ProductVariantDto,
+  })
+  @Expose()
+  @Type(() => ProductVariantDto)
+  productVariant: ProductVariantDto;
+
+  @ApiProperty({
+    description: "Quantity ordered",
     example: 2,
   })
-  @IsNumber()
-  @IsNotEmpty()
   @Expose()
-  @Type(() => Number)
   quantity: number;
 
-  @ApiPropertyOptional({
-    description: "Additional notes for this item",
-    example: "Gift wrap please",
+  @ApiProperty({
+    description: "Unit price at time of order",
+    example: 299900,
   })
-  @IsString()
-  @IsOptional()
   @Expose()
-  notes?: string;
+  unitPrice: number;
+
+  @ApiProperty({
+    description: "Total price for this item (quantity × unitPrice)",
+    example: 599800,
+  })
+  @Expose()
+  totalPrice: number;
+
+  @ApiProperty({
+    description: "Created timestamp",
+  })
+  @Expose()
+  createdAt: Date;
+
+  @ApiProperty({
+    description: "Last updated timestamp",
+  })
+  @Expose()
+  updatedAt: Date;
 }
 
 export class OrderItemResponseDto {

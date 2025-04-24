@@ -5,7 +5,7 @@ export enum PromotionType {
   PERCENTAGE_DISCOUNT = "PERCENTAGE_DISCOUNT",
   FIXED_AMOUNT_DISCOUNT = "FIXED_AMOUNT_DISCOUNT",
   FREE_SHIPPING = "FREE_SHIPPING",
-  BUY_X_GET_Y_FREE = "BUY_X_GET_Y_FREE"
+  BUY_X_GET_Y_FREE = "BUY_X_GET_Y_FREE",
 }
 
 @Entity("promotions")
@@ -23,7 +23,7 @@ export class Promotion extends BaseEntity {
     type: "enum",
     enum: PromotionType,
     default: PromotionType.PERCENTAGE_DISCOUNT,
-    name: "type"
+    name: "type",
   })
   type: PromotionType;
 
@@ -32,8 +32,8 @@ export class Promotion extends BaseEntity {
     precision: 10,
     scale: 2,
     nullable: false,
-    default: 0.00,
-    name: "discount_value"
+    default: 0.0,
+    name: "discount_value",
   })
   discountValue: number;
 
@@ -42,21 +42,21 @@ export class Promotion extends BaseEntity {
     precision: 10,
     scale: 2,
     nullable: true,
-    name: "minimum_order_amount"
+    name: "minimum_order_amount",
   })
   minimumOrderAmount: number;
 
-  @Column({ 
-    type: "timestamp", 
-    name: "start_date", 
-    default: () => "CURRENT_TIMESTAMP" 
+  @Column({
+    type: "timestamp",
+    name: "start_date",
+    default: () => "CURRENT_TIMESTAMP",
   })
   startDate: Date;
 
-  @Column({ 
-    type: "timestamp", 
-    name: "end_date", 
-    nullable: true 
+  @Column({
+    type: "timestamp",
+    name: "end_date",
+    nullable: true,
   })
   endDate: Date;
 

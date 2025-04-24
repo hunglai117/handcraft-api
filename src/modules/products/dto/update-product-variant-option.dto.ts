@@ -2,32 +2,32 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 
-export class CreateCategoryDto {
+export class UpdateProductVariantOptionDto {
   @ApiProperty({
-    description: "Category name",
-    example: "Home Decor",
+    description: "Variant Option ID",
+    example: "1234567890123456789",
   })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(255)
   @Expose()
-  name: string;
+  id: string;
 
   @ApiPropertyOptional({
-    description: "Parent category ID",
-    nullable: true,
-  })
-  @IsOptional()
-  @Expose()
-  parentId?: string;
-
-  @ApiPropertyOptional({
-    description: "Category image URL or path",
-    example: "https://example.com/images/home-decor.jpg",
-    nullable: true,
+    description: "Option ID this value belongs to",
+    example: "5555555555555555555",
   })
   @IsString()
   @IsOptional()
   @Expose()
-  image?: string;
+  option_id?: string;
+
+  @ApiPropertyOptional({
+    description: "Option value (e.g., Small, Red)",
+    example: "Small",
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  @Expose()
+  value?: string;
 }

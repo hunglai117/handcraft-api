@@ -1,0 +1,26 @@
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany } from "typeorm";
+import { BaseEntity } from "../../../common/entities/base.entity";
+import { Product } from "./product.entity";
+import { ProductVariantOption } from "./product-variant-option.entity";
+
+@Entity("product_options")
+export class ProductOption extends BaseEntity {
+  @Column({ type: "bigint", nullable: false })
+  product_id: string;
+
+  @ManyToOne(() => Product, (product) => product.options, {
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "product_id" })
+  product: Product;
+
+  @Column({ length: 100, nullable: false })
+  name: string;
+
+  @OneToMany(
+    () => ProductVariantOption,
+    (variantOption) => variantOption.option,
+    { cascade: true },
+  )
+  variantOptions: ProductVariantOption[];
+}

@@ -6,8 +6,11 @@ export class Category extends BaseEntity {
   @Column({ length: 255, nullable: false })
   name: string;
 
-  @Column({ length: 255, nullable: false, name: "path_url" })
-  pathUrl: string;
+  @Column({ length: 255, nullable: false, name: "slug" })
+  slug: string;
+
+  @Column({ type: "text", nullable: true })
+  image: string;
 
   @Column({ type: "bigint", nullable: true, name: "parent_id" })
   parentId: string;
