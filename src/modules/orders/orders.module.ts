@@ -12,6 +12,7 @@ import { OrderPromotion } from "./entities/order-promotion.entity";
 import { PaymentTransaction } from "./entities/payment-transaction.entity";
 import { ProductsModule } from "../products/products.module";
 import { UsersModule } from "../users/users.module";
+import { ProductVariant } from "../products/entities/product-variant.entity";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from "../users/users.module";
       CartItem,
       OrderPromotion,
       PaymentTransaction,
+      ProductVariant,
     ]),
     ProductsModule,
     UsersModule,

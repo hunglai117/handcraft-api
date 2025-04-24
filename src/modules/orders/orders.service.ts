@@ -12,6 +12,8 @@ import { UpdateOrderDto } from "./dto/update-order.dto";
 import { ProductsService } from "../products/products.service";
 import { UsersService } from "../users/users.service";
 import { OrderStatus } from "./entities/order-status.enum";
+import { PaymentStatus } from "./entities/payment-status.enum";
+import { ProductVariant } from "../products/entities/product-variant.entity";
 
 @Injectable()
 export class OrdersService {
@@ -20,6 +22,8 @@ export class OrdersService {
     private orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
+    @InjectRepository(ProductVariant)
+    private productVariantRepository: Repository<ProductVariant>,
     private productsService: ProductsService,
     private usersService: UsersService,
   ) {}
@@ -29,17 +33,23 @@ export class OrdersService {
     await this.usersService.findById(userId);
 
     // Create order
-    const order = this.orderRepository.create({
-      userId,
-      paymentMethod: createOrderDto.paymentMethod,
-      shippingAddress: createOrderDto.shippingAddress,
-      shippingCity: createOrderDto.shippingCity,
-      shippingState: createOrderDto.shippingState,
-      shippingZip: createOrderDto.shippingZip,
-      shippingCountry: createOrderDto.shippingCountry,
+    const order = new Order();
+    order.userId = userId;
+    // Store shipping info in the shippingAddress object
+    order.shippingAddress = {
+      address: createOrderDto.shippingAddress,
+      city: createOrderDto.shippingCity,
+      state: createOrderDto.shippingState,
+      zipCode: createOrderDto.shippingZip,
+      country: createOrderDto.shippingCountry,
+    };
+    // Store additional info in billingAddress to keep track of notes
+    order.billingAddress = {
       notes: createOrderDto.notes,
-      totalAmount: 0, // Will be calculated below
-    });
+    };
+    order.totalAmount = 0; // Will be calculated below
+    order.orderStatus = OrderStatus.PENDING;
+    order.paymentStatus = PaymentStatus.UNPAID;
 
     if (!order.id) {
       order.generateId();
@@ -53,39 +63,38 @@ export class OrdersService {
     let totalAmount = 0;
 
     for (const itemDto of createOrderDto.orderItems) {
-      const product = await this.productsService.findOne(itemDto.productId);
+      // Find variant by ID
+      const productVariant = await this.findProductVariant(
+        itemDto.productVariantId,
+      );
 
       // Check stock availability
-      if (product.stockQuantity < itemDto.quantity) {
+      if (productVariant.stockQuantity < itemDto.quantity) {
         throw new BadRequestException(
-          `Not enough stock for product ${product.name}. Available: ${product.stockQuantity}`,
+          `Not enough stock for variant ${productVariant.title}. Available: ${productVariant.stockQuantity}`,
         );
       }
 
-      const orderItem = this.orderItemRepository.create({
-        orderId: order.id,
-        productId: product.id,
-        quantity: itemDto.quantity,
-        unitPrice: product.price,
-        productName: product.name,
-        productNotes: itemDto.notes,
-      });
+      // Create order item
+      const orderItem = new OrderItem();
+      orderItem.orderId = order.id;
+      orderItem.productVariantId = productVariant.id;
+      orderItem.quantity = itemDto.quantity;
+      orderItem.unitPrice = productVariant.price;
+      orderItem.totalPrice = productVariant.price * itemDto.quantity;
 
       if (!orderItem.id) {
         orderItem.generateId();
       }
 
       orderItems.push(orderItem);
-      totalAmount += product.price * itemDto.quantity;
+      totalAmount += productVariant.price * itemDto.quantity;
 
-      // Update product stock
-      // Using only properties that exist in UpdateProductDto
-      await this.productsService.update(product.id, {
-        stockQuantity: product.stockQuantity - itemDto.quantity,
-      });
-
-      // Update purchase count separately via direct DB access if needed
-      // This would require custom implementation in ProductsService
+      // Update product variant stock
+      await this.updateProductVariantStock(
+        productVariant,
+        productVariant.stockQuantity - itemDto.quantity,
+      );
     }
 
     // Save order items
@@ -97,6 +106,30 @@ export class OrdersService {
     await this.orderRepository.save(order);
 
     return order;
+  }
+
+  // Helper method to find a product variant by ID
+  private async findProductVariant(variantId: string): Promise<ProductVariant> {
+    const variant = await this.productVariantRepository.findOne({
+      where: { id: variantId },
+    });
+
+    if (!variant) {
+      throw new NotFoundException(
+        `Product variant with ID ${variantId} not found`,
+      );
+    }
+
+    return variant;
+  }
+
+  // Helper method to update product variant stock
+  private async updateProductVariantStock(
+    variant: ProductVariant,
+    newStock: number,
+  ): Promise<ProductVariant> {
+    variant.stockQuantity = newStock;
+    return this.productVariantRepository.save(variant);
   }
 
   async findAll(userId?: string): Promise<Order[]> {
@@ -134,7 +167,38 @@ export class OrdersService {
   async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
 
-    Object.assign(order, updateOrderDto);
+    // Handle updates to orderStatus if provided
+    if (updateOrderDto.status) {
+      order.orderStatus = updateOrderDto.status;
+    }
+
+    // Update shipping address if any shipping fields are provided
+    if (
+      updateOrderDto.shippingAddress ||
+      updateOrderDto.shippingCity ||
+      updateOrderDto.shippingState ||
+      updateOrderDto.shippingZip ||
+      updateOrderDto.shippingCountry
+    ) {
+      order.shippingAddress = {
+        ...order.shippingAddress, // Preserve existing values
+        address:
+          updateOrderDto.shippingAddress || order.shippingAddress?.address,
+        city: updateOrderDto.shippingCity || order.shippingAddress?.city,
+        state: updateOrderDto.shippingState || order.shippingAddress?.state,
+        zipCode: updateOrderDto.shippingZip || order.shippingAddress?.zipCode,
+        country:
+          updateOrderDto.shippingCountry || order.shippingAddress?.country,
+      };
+    }
+
+    // Update notes if provided
+    if (updateOrderDto.notes) {
+      order.billingAddress = {
+        ...order.billingAddress, // Preserve existing values
+        notes: updateOrderDto.notes,
+      };
+    }
 
     return this.orderRepository.save(order);
   }
@@ -143,8 +207,8 @@ export class OrdersService {
     const order = await this.findOne(id);
 
     if (
-      order.status !== OrderStatus.PENDING &&
-      order.status !== OrderStatus.PROCESSING
+      order.orderStatus !== OrderStatus.PENDING &&
+      order.orderStatus !== OrderStatus.PROCESSING
     ) {
       throw new BadRequestException(
         "Cannot cancel orders that have been shipped or delivered",
@@ -153,16 +217,14 @@ export class OrdersService {
 
     // Restore product stock
     for (const item of order.orderItems) {
-      const product = await this.productsService.findOne(item.productId);
-      await this.productsService.update(product.id, {
-        stockQuantity: product.stockQuantity + item.quantity,
-      });
-
-      // Update purchase count separately via direct DB access if needed
-      // This would require custom implementation in ProductsService
+      const variant = await this.findProductVariant(item.productVariantId);
+      await this.updateProductVariantStock(
+        variant,
+        variant.stockQuantity + item.quantity,
+      );
     }
 
-    order.status = OrderStatus.CANCELLED;
+    order.orderStatus = OrderStatus.CANCELLED;
     return this.orderRepository.save(order);
   }
 }

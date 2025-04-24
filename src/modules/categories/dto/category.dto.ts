@@ -22,7 +22,7 @@ export class CategoryDto {
     example: "/home-decor",
   })
   @Expose()
-  pathUrl: string;
+  slug: string;
 
   @ApiPropertyOptional({
     description: "Category image URL or path",

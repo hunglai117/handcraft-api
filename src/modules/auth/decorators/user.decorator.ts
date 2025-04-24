@@ -1,7 +1,11 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { User } from "src/modules/users/entities/user.entity";
 
 export const CurrentUser = createParamDecorator(
-  (propertyPath: string | undefined, ctx: ExecutionContext) => {
+  (
+    propertyPath: string | undefined,
+    ctx: ExecutionContext,
+  ): Partial<Omit<User, "password">> => {
     const request = ctx.switchToHttp().getRequest();
     const user = request.user;
 

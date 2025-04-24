@@ -21,7 +21,7 @@ export class CategoriesService {
       category.generateId();
     }
 
-    category.pathUrl = `${slugify(category.name, { lower: true })}-c${category.id}`;
+    category.slug = `${slugify(category.name, { lower: true })}-c${category.id}`;
 
     if (createCategoryDto.parentId) {
       const parent = await this.findOne(
@@ -161,7 +161,7 @@ export class CategoriesService {
     Object.assign(category, updateCategoryDto);
 
     if (nameChanged) {
-      category.pathUrl = `${slugify(category.name, { lower: true })}-c${category.id}`;
+      category.slug = `${slugify(category.name, { lower: true })}-c${category.id}`;
     }
 
     return this.categoryRepository.save(category);

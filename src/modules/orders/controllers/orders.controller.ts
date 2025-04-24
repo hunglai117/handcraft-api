@@ -22,12 +22,17 @@ import { JwtAuthGuard } from "src/modules/auth/jwt-auth.guard";
 import { Roles } from "../../auth/decorators/roles.decorator";
 import { RolesGuard } from "../../auth/guards/roles.guard";
 import { PaginatedResponseDto } from "../../shared/dtos/paginated-response.dto";
+import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
+import { PaginationHelper } from "../../shared/helpers/pagination.helper";
 import { UserRole } from "../../users/entities/user.entity";
 import { OrderDto } from "../dto/order.dto";
 import { PlaceOrderDto } from "../dto/place-order.dto";
 import { OrderStatus } from "../entities/order-status.enum";
 import { PaymentStatus } from "../entities/payment-status.enum";
 import { OrdersService } from "../services/orders.service";
+import { Request } from "express";
+import { PaginatedOrderResponseDto } from "../dto/order-query.dto";
+import { CurrentUser } from "src/modules/auth/decorators/user.decorator";
 
 @ApiTags("Orders")
 @Controller("orders")
@@ -44,10 +49,10 @@ export class OrdersController {
     type: OrderDto,
   })
   async placeOrder(
-    @Req() req,
+    @Req() req: Request,
     @Body() placeOrderDto: PlaceOrderDto,
   ): Promise<OrderDto> {
-    const userId = req.user.id;
+    const userId = req.user["id"];
     const order = await this.ordersService.placeOrder(userId, placeOrderDto);
     return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
   }
@@ -72,30 +77,25 @@ export class OrdersController {
     type: PaginatedResponseDto,
   })
   async getUserOrders(
-    @Req() req,
-    @Query("page") page = 1,
-    @Query("limit") limit = 10,
-  ): Promise<PaginatedResponseDto<OrderDto>> {
-    const userId = req.user.id;
+    @CurrentUser() req: Request,
+    @Query() paginationQuery: PaginationQueryDto,
+  ): Promise<PaginatedOrderResponseDto> {
+    const userId = req.user["id"];
     const [orders, total] = await this.ordersService.findAllForUser(
       userId,
-      page,
-      limit,
+      paginationQuery.page,
+      paginationQuery.limit,
     );
 
-    const orderDtos = orders.map((order) =>
-      plainToInstance(OrderDto, order, { excludeExtraneousValues: true }),
+    const resp = PaginationHelper.createPaginatedResponse(
+      orders,
+      total,
+      paginationQuery,
     );
 
-    return {
-      data: orderDtos,
-      meta: {
-        page: +page,
-        limit: +limit,
-        totalItems: total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return plainToInstance(PaginatedOrderResponseDto, resp, {
+      excludeExtraneousValues: true,
+    });
   }
 
   @Get(":id")
@@ -105,8 +105,11 @@ export class OrdersController {
     description: "Returns order details",
     type: OrderDto,
   })
-  async getOrder(@Req() req, @Param("id") id: string): Promise<OrderDto> {
-    const userId = req.user.id;
+  async getOrder(
+    @Req() req: Request,
+    @Param("id") id: string,
+  ): Promise<OrderDto> {
+    const userId = req.user["id"];
     const order = await this.ordersService.findOne(id, userId);
     return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
   }
@@ -118,8 +121,11 @@ export class OrdersController {
     description: "Order cancelled successfully",
     type: OrderDto,
   })
-  async cancelOrder(@Req() req, @Param("id") id: string): Promise<OrderDto> {
-    const userId = req.user.id;
+  async cancelOrder(
+    @Req() req: Request,
+    @Param("id") id: string,
+  ): Promise<OrderDto> {
+    const userId = req.user["id"];
     const order = await this.ordersService.cancelOrder(id, userId);
     return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
   }

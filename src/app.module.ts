@@ -12,6 +12,7 @@ import { WinstonModule } from "nest-winston";
 import * as winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 import configs from "./config";
+import { OrdersModule } from "./modules/orders/orders.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import configs from "./config";
     ProductsModule,
     CategoriesModule,
     PromotionsModule,
+    OrdersModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: configs,

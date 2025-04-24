@@ -98,7 +98,6 @@ export class OrdersController {
   ): Promise<OrderDto> {
     const order = await this.ordersService.findOne(id);
 
-    // Check if order belongs to current user or user is admin
     if (user.role !== UserRole.ADMIN && order.userId !== user.id) {
       throw new NotFoundException(`Order not found`);
     }
@@ -163,10 +162,8 @@ export class OrdersController {
     @Param("id") id: string,
     @CurrentUser() user: User,
   ): Promise<OrderDto> {
-    // Get order to check ownership
     const order = await this.ordersService.findOne(id);
 
-    // Only admin or order owner can cancel
     if (user.role !== UserRole.ADMIN && order.userId !== user.id) {
       throw new NotFoundException(`Order not found`);
     }
