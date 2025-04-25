@@ -91,7 +91,7 @@ export class AuthService {
   }
 
   async socialLogin(socialAuthDto: SocialAuthRequestDto) {
-    const { token, provider, refreshToken } = socialAuthDto;
+    const { token, provider } = socialAuthDto;
 
     try {
       // Validate token with provider and get user info
@@ -110,10 +110,8 @@ export class AuthService {
       if (existingProvider) {
         user = existingProvider.user;
 
-        // Update tokens
+        // Update provider data
         await this.userProviderService.update(existingProvider.id, {
-          accessToken: token,
-          refreshToken: refreshToken || null,
           providerData: providerUserData.data,
         });
       } else {
@@ -130,8 +128,6 @@ export class AuthService {
             provider,
             providerUserData.id,
             providerUserData.data,
-            token,
-            refreshToken,
           );
         } else {
           // Create a new user and link provider
@@ -147,8 +143,6 @@ export class AuthService {
             provider,
             providerUserData.id,
             providerUserData.data,
-            token,
-            refreshToken,
           );
         }
       }
@@ -173,7 +167,7 @@ export class AuthService {
   }
 
   async linkProvider(userId: string, socialAuthDto: SocialAuthRequestDto) {
-    const { token, provider, refreshToken } = socialAuthDto;
+    const { token, provider } = socialAuthDto;
     const user = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!user) {
@@ -199,8 +193,6 @@ export class AuthService {
     // If provider already linked to this user, update it
     if (existingProvider) {
       await this.userProviderService.update(existingProvider.id, {
-        accessToken: token,
-        refreshToken: refreshToken || null,
         providerData: providerUserData.data,
       });
     } else {
@@ -210,8 +202,6 @@ export class AuthService {
         provider,
         providerUserData.id,
         providerUserData.data,
-        token,
-        refreshToken,
       );
     }
 

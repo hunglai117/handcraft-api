@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsEnum, IsNotEmpty, IsString } from "class-validator";
 import { Expose } from "class-transformer";
 import { ProviderType } from "../../users/entities/user-provider.entity";
 
@@ -22,14 +22,4 @@ export class SocialAuthRequestDto {
   @IsEnum(ProviderType)
   @Expose()
   provider: ProviderType;
-
-  @ApiProperty({
-    description: "Optional refresh token from provider",
-    example: "1//04dB2zMMI1DpACgYIARAAGAQSNwF-L9...",
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  @Expose()
-  refreshToken?: string;
 }

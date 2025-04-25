@@ -29,13 +29,4 @@ export class UserProvider extends BaseEntity {
 
   @Column({ name: "provider_data", type: "json", nullable: true })
   providerData: Record<string, any>;
-
-  @Column({ name: "access_token", type: "text", nullable: true })
-  accessToken: string;
-
-  @Column({ name: "refresh_token", type: "text", nullable: true })
-  refreshToken: string;
-
-  @Column({ name: "token_expires_at", type: "timestamp", nullable: true })
-  tokenExpiresAt: Date;
 }

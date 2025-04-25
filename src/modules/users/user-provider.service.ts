@@ -26,9 +26,6 @@ export class UserProviderService {
     provider: ProviderType,
     providerId: string,
     providerData?: Record<string, any>,
-    accessToken?: string,
-    refreshToken?: string,
-    tokenExpiresAt?: Date,
   ): Promise<UserProvider> {
     const userProvider = this.userProviderRepository.create({
       user,
@@ -36,9 +33,6 @@ export class UserProviderService {
       provider,
       providerId,
       providerData,
-      accessToken,
-      refreshToken,
-      tokenExpiresAt,
     });
 
     return this.userProviderRepository.save(userProvider);
