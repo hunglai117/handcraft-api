@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { FindManyOptions, Repository } from "typeorm";
+import { DataSource, FindManyOptions, Repository } from "typeorm";
 import { Order } from "./entities/order.entity";
 import { OrderItem } from "./entities/order-item.entity";
 import { CreateOrderDto } from "./dto/create-order.dto";
@@ -26,86 +26,101 @@ export class OrdersService {
     private productVariantRepository: Repository<ProductVariant>,
     private productsService: ProductsService,
     private usersService: UsersService,
+    private dataSource: DataSource,
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
     // Check if user exists
     await this.usersService.findById(userId);
 
-    // Create order
-    const order = new Order();
-    order.userId = userId;
-    // Store shipping info in the shippingAddress object
-    order.shippingAddress = {
-      address: createOrderDto.shippingAddress,
-      city: createOrderDto.shippingCity,
-      state: createOrderDto.shippingState,
-      zipCode: createOrderDto.shippingZip,
-      country: createOrderDto.shippingCountry,
-    };
-    // Store additional info in billingAddress to keep track of notes
-    order.billingAddress = {
-      notes: createOrderDto.notes,
-    };
-    order.totalAmount = 0; // Will be calculated below
-    order.orderStatus = OrderStatus.PENDING;
-    order.paymentStatus = PaymentStatus.UNPAID;
+    const orderId = await this.dataSource.transaction(
+      async (transactionalEntityManager) => {
+        // Create order
+        const order = new Order();
+        order.userId = userId;
+        // Store shipping info in the shippingAddress object
+        order.shippingAddress = {
+          address: createOrderDto.shippingAddress,
+          city: createOrderDto.shippingCity,
+          state: createOrderDto.shippingState,
+          zipCode: createOrderDto.shippingZip,
+          country: createOrderDto.shippingCountry,
+        };
+        // Store additional info in billingAddress to keep track of notes
+        order.billingAddress = {
+          notes: createOrderDto.notes,
+        };
+        order.totalAmount = 0; // Will be calculated below
+        order.orderStatus = OrderStatus.PENDING;
+        order.paymentStatus = PaymentStatus.UNPAID;
 
-    if (!order.id) {
-      order.generateId();
-    }
+        if (!order.id) {
+          order.generateId();
+        }
 
-    // Save order first to get ID
-    await this.orderRepository.save(order);
+        // Save order first to get ID
+        await transactionalEntityManager.save(order);
 
-    // Process order items
-    const orderItems: OrderItem[] = [];
-    let totalAmount = 0;
+        // Process order items
+        const orderItems: OrderItem[] = [];
+        let totalAmount = 0;
 
-    for (const itemDto of createOrderDto.orderItems) {
-      // Find variant by ID
-      const productVariant = await this.findProductVariant(
-        itemDto.productVariantId,
-      );
+        for (const itemDto of createOrderDto.orderItems) {
+          // Find variant by ID
+          const productVariant = await transactionalEntityManager.findOne(
+            ProductVariant,
+            {
+              where: { id: itemDto.productVariantId },
+            },
+          );
 
-      // Check stock availability
-      if (productVariant.stockQuantity < itemDto.quantity) {
-        throw new BadRequestException(
-          `Not enough stock for variant ${productVariant.title}. Available: ${productVariant.stockQuantity}`,
-        );
-      }
+          if (!productVariant) {
+            throw new NotFoundException(
+              `Product variant with ID ${itemDto.productVariantId} not found`,
+            );
+          }
 
-      // Create order item
-      const orderItem = new OrderItem();
-      orderItem.orderId = order.id;
-      orderItem.productVariantId = productVariant.id;
-      orderItem.quantity = itemDto.quantity;
-      orderItem.unitPrice = productVariant.price;
-      orderItem.totalPrice = productVariant.price * itemDto.quantity;
+          // Check stock availability
+          if (productVariant.stockQuantity < itemDto.quantity) {
+            throw new BadRequestException(
+              `Not enough stock for variant ${productVariant.title}. Available: ${productVariant.stockQuantity}`,
+            );
+          }
 
-      if (!orderItem.id) {
-        orderItem.generateId();
-      }
+          // Create order item
+          const orderItem = new OrderItem();
+          orderItem.orderId = order.id;
+          orderItem.productVariantId = productVariant.id;
+          orderItem.quantity = itemDto.quantity;
+          orderItem.unitPrice = productVariant.price;
+          orderItem.totalPrice = productVariant.price * itemDto.quantity;
 
-      orderItems.push(orderItem);
-      totalAmount += productVariant.price * itemDto.quantity;
+          if (!orderItem.id) {
+            orderItem.generateId();
+          }
 
-      // Update product variant stock
-      await this.updateProductVariantStock(
-        productVariant,
-        productVariant.stockQuantity - itemDto.quantity,
-      );
-    }
+          orderItems.push(orderItem);
+          totalAmount += productVariant.price * itemDto.quantity;
 
-    // Save order items
-    await this.orderItemRepository.save(orderItems);
+          // Update product variant stock
+          productVariant.stockQuantity =
+            productVariant.stockQuantity - itemDto.quantity;
+          await transactionalEntityManager.save(productVariant);
+        }
 
-    // Update order with total amount and return complete order
-    order.totalAmount = totalAmount;
-    order.orderItems = orderItems;
-    await this.orderRepository.save(order);
+        // Save order items
+        await transactionalEntityManager.save(orderItems);
 
-    return order;
+        // Update order with total amount
+        order.totalAmount = totalAmount;
+        await transactionalEntityManager.save(order);
+
+        return order.id;
+      },
+    );
+
+    // Return complete order with items
+    return this.findOne(orderId);
   }
 
   // Helper method to find a product variant by ID
@@ -215,16 +230,32 @@ export class OrdersService {
       );
     }
 
-    // Restore product stock
-    for (const item of order.orderItems) {
-      const variant = await this.findProductVariant(item.productVariantId);
-      await this.updateProductVariantStock(
-        variant,
-        variant.stockQuantity + item.quantity,
-      );
-    }
+    await this.dataSource.transaction(async (transactionalEntityManager) => {
+      // Restore product stock
+      for (const item of order.orderItems) {
+        const variant = await transactionalEntityManager.findOne(
+          ProductVariant,
+          {
+            where: { id: item.productVariantId },
+          },
+        );
 
-    order.orderStatus = OrderStatus.CANCELLED;
-    return this.orderRepository.save(order);
+        if (!variant) {
+          throw new NotFoundException(
+            `Product variant with ID ${item.productVariantId} not found`,
+          );
+        }
+
+        // Restore inventory
+        variant.stockQuantity += item.quantity;
+        await transactionalEntityManager.save(variant);
+      }
+
+      // Update order status
+      order.orderStatus = OrderStatus.CANCELLED;
+      await transactionalEntityManager.save(order);
+    });
+
+    return this.findOne(order.id);
   }
 }

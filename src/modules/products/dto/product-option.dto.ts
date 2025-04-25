@@ -4,7 +4,6 @@ import { Expose } from "class-transformer";
 export class ProductOptionDto {
   @ApiProperty({
     description: "Option unique identifier (Snowflake ID)",
-    example: "1234567890123456789",
     type: String,
   })
   @Expose()
@@ -12,7 +11,6 @@ export class ProductOptionDto {
 
   @ApiProperty({
     description: "Product ID this option belongs to",
-    example: "9876543210987654321",
     type: String,
   })
   @Expose()

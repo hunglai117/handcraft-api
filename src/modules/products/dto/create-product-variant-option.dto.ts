@@ -4,15 +4,6 @@ import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 
 export class CreateProductVariantOptionDto {
   @ApiProperty({
-    description: "Option ID this value belongs to",
-    example: "5555555555555555555",
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Expose()
-  option_id: string;
-
-  @ApiProperty({
     description: "Option value (e.g., Small, Red)",
     example: "Small",
   })

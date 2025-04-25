@@ -15,7 +15,6 @@ import { UpdateProductVariantOptionDto } from "./update-product-variant-option.d
 export class UpdateProductVariantDto {
   @ApiProperty({
     description: "Variant ID",
-    example: "1234567890123456789",
   })
   @IsString()
   @IsNotEmpty()

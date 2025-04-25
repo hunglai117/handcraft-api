@@ -7,7 +7,6 @@ import { ProductOptionDto } from "./product-option.dto";
 export class ProductDto {
   @ApiProperty({
     description: "Product unique identifier (Snowflake ID)",
-    example: "1234567890123456789",
     type: String,
   })
   @Expose()

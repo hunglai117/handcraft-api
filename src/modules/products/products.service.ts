@@ -29,97 +29,87 @@ export class ProductsService {
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
-    // Use a transaction to ensure all product-related data is saved consistently
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      // Create product
-      const product = this.productRepository.create({
-        name: createProductDto.name,
-        description: createProductDto.description,
-        category_id: createProductDto.category_id,
-        currency: createProductDto.currency || "VND",
-        images: createProductDto.images,
-      });
-
-      if (!product.id) {
-        product.generateId();
-      }
-
-      product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
-
-      // Save product
-      await queryRunner.manager.save(product);
-
-      // Create and save product options
-      const options: ProductOption[] = [];
-      for (const optionDto of createProductDto.options) {
-        const option = this.productOptionRepository.create({
-          name: optionDto.name,
-          product_id: product.id,
+    const productId = await this.dataSource.transaction(
+      async (transactionalEntityManager) => {
+        // Create product
+        const product = this.productRepository.create({
+          name: createProductDto.name,
+          description: createProductDto.description,
+          category_id: createProductDto.category_id,
+          currency: createProductDto.currency || "VND",
+          images: createProductDto.images,
         });
-        option.generateId();
-        await queryRunner.manager.save(option);
-        options.push(option);
-      }
 
-      // Create and save product variants and variant options
-      let minPrice: number | null = null;
-      let maxPrice: number | null = null;
-
-      for (const variantDto of createProductDto.variants) {
-        const variant = this.productVariantRepository.create({
-          title: variantDto.title,
-          price: variantDto.price,
-          sku: variantDto.sku,
-          stockQuantity: variantDto.stockQuantity,
-          weight: variantDto.weight,
-          image: variantDto.image,
-          product_id: product.id,
-        });
-        variant.generateId();
-        await queryRunner.manager.save(variant);
-
-        // Track min/max price for the product
-        if (minPrice === null || variant.price < minPrice) {
-          minPrice = variant.price;
-        }
-        if (maxPrice === null || variant.price > maxPrice) {
-          maxPrice = variant.price;
+        if (!product.id) {
+          product.generateId();
         }
 
-        // Create and save variant options
-        for (const variantOptionDto of variantDto.variantOptions) {
-          const variantOption = this.productVariantOptionRepository.create({
-            variant_id: variant.id,
-            option_id: variantOptionDto.option_id,
-            value: variantOptionDto.value,
+        product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
+
+        await transactionalEntityManager.save(product);
+
+        // Create and save product options
+        const options: ProductOption[] = [];
+        for (const optionDto of createProductDto.options) {
+          const option = this.productOptionRepository.create({
+            name: optionDto.name,
+            product_id: product.id,
           });
-          variantOption.generateId();
-          await queryRunner.manager.save(variantOption);
+          option.generateId();
+          await transactionalEntityManager.save(option);
+          options.push(option);
         }
-      }
 
-      // Update product with price information
-      product.priceMin = minPrice || 0;
-      product.priceMax = maxPrice || 0;
-      await queryRunner.manager.save(product);
+        // Create and save product variants and variant options
+        let minPrice: number | null = null;
+        let maxPrice: number | null = null;
 
-      // Commit transaction
-      await queryRunner.commitTransaction();
+        for (const variantDto of createProductDto.variants) {
+          const variant = this.productVariantRepository.create({
+            title: variantDto.title,
+            price: variantDto.price,
+            sku: variantDto.sku,
+            stockQuantity: variantDto.stockQuantity,
+            weight: variantDto.weight,
+            image: variantDto.image,
+            product_id: product.id,
+          });
+          variant.generateId();
+          await transactionalEntityManager.save(variant);
 
-      // Return product with relations
-      return this.findOne(product.id);
-    } catch (error) {
-      // Rollback transaction on error
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      // Release query runner
-      await queryRunner.release();
-    }
+          // Track min/max price for the product
+          if (minPrice === null || variant.price < minPrice) {
+            minPrice = variant.price;
+          }
+          if (maxPrice === null || variant.price > maxPrice) {
+            maxPrice = variant.price;
+          }
+
+          // Create and save variant options
+          for (const [
+            index,
+            variantOptionDto,
+          ] of variantDto.variantOptions.entries()) {
+            const variantOption = this.productVariantOptionRepository.create({
+              variantId: variant.id,
+              optionId: options[index].id,
+              value: variantOptionDto.value,
+            });
+            variantOption.generateId();
+            await transactionalEntityManager.save(variantOption);
+          }
+        }
+
+        // Update product with price information
+        product.priceMin = minPrice || 0;
+        product.priceMax = maxPrice || 0;
+        await transactionalEntityManager.save(product);
+
+        return product.id;
+      },
+    );
+
+    return this.findOne(productId);
   }
 
   /**
@@ -260,7 +250,7 @@ export class ProductsService {
       for (const variantOption of variant.variantOptions) {
         // Find the option this value belongs to
         const option = product.options.find(
-          (o) => o.id === variantOption.option_id,
+          (o) => o.id === variantOption.optionId,
         );
         if (option) {
           variantOption.option = option;
@@ -286,7 +276,7 @@ export class ProductsService {
       for (const variantOption of variant.variantOptions) {
         // Find the option this value belongs to
         const option = product.options.find(
-          (o) => o.id === variantOption.option_id,
+          (o) => o.id === variantOption.optionId,
         );
         if (option) {
           variantOption.option = option;
@@ -302,12 +292,8 @@ export class ProductsService {
     updateProductDto: UpdateProductDto,
   ): Promise<Product> {
     const product = await this.findOne(id);
-    const queryRunner = this.dataSource.createQueryRunner();
 
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
+    await this.dataSource.transaction(async (transactionalEntityManager) => {
       // Update basic product fields
       if (updateProductDto.name) {
         product.name = updateProductDto.name;
@@ -330,7 +316,7 @@ export class ProductsService {
         product.images = updateProductDto.images;
       }
 
-      await queryRunner.manager.save(product);
+      await transactionalEntityManager.save(product);
 
       // Update product options if provided
       if (updateProductDto.options) {
@@ -340,7 +326,7 @@ export class ProductsService {
             const option = product.options.find((o) => o.id === optionDto.id);
             if (option && optionDto.name) {
               option.name = optionDto.name;
-              await queryRunner.manager.save(option);
+              await transactionalEntityManager.save(option);
             }
           } else {
             // Create new option
@@ -349,7 +335,7 @@ export class ProductsService {
               product_id: product.id,
             });
             newOption.generateId();
-            await queryRunner.manager.save(newOption);
+            await transactionalEntityManager.save(newOption);
             product.options.push(newOption);
           }
         }
@@ -391,7 +377,7 @@ export class ProductsService {
                 variant.image = variantDto.image;
               }
 
-              await queryRunner.manager.save(variant);
+              await transactionalEntityManager.save(variant);
 
               // Update variant options if provided
               if (variantDto.variantOptions) {
@@ -403,26 +389,26 @@ export class ProductsService {
                     );
 
                     if (variantOption) {
-                      if (optionValueDto.option_id !== undefined) {
-                        variantOption.option_id = optionValueDto.option_id;
+                      if (optionValueDto.optionId !== undefined) {
+                        variantOption.optionId = optionValueDto.optionId;
                       }
 
                       if (optionValueDto.value !== undefined) {
                         variantOption.value = optionValueDto.value;
                       }
 
-                      await queryRunner.manager.save(variantOption);
+                      await transactionalEntityManager.save(variantOption);
                     }
                   } else {
                     // Create new option value
                     const newVariantOption =
                       this.productVariantOptionRepository.create({
-                        variant_id: variant.id,
-                        option_id: optionValueDto.option_id,
+                        variantId: variant.id,
+                        optionId: optionValueDto.optionId,
                         value: optionValueDto.value,
                       });
                     newVariantOption.generateId();
-                    await queryRunner.manager.save(newVariantOption);
+                    await transactionalEntityManager.save(newVariantOption);
                   }
                 }
               }
@@ -447,19 +433,19 @@ export class ProductsService {
               product_id: product.id,
             });
             newVariant.generateId();
-            await queryRunner.manager.save(newVariant);
+            await transactionalEntityManager.save(newVariant);
 
             // Create new variant options
             if (variantDto.variantOptions) {
               for (const optionValueDto of variantDto.variantOptions) {
                 const newVariantOption =
                   this.productVariantOptionRepository.create({
-                    variant_id: newVariant.id,
-                    option_id: optionValueDto.option_id,
+                    variantId: newVariant.id,
+                    optionId: optionValueDto.optionId,
                     value: optionValueDto.value,
                   });
                 newVariantOption.generateId();
-                await queryRunner.manager.save(newVariantOption);
+                await transactionalEntityManager.save(newVariantOption);
               }
             }
 
@@ -479,20 +465,13 @@ export class ProductsService {
         if (minPrice !== null && maxPrice !== null) {
           product.priceMin = minPrice;
           product.priceMax = maxPrice;
-          await queryRunner.manager.save(product);
+          await transactionalEntityManager.save(product);
         }
       }
+    });
 
-      await queryRunner.commitTransaction();
-
-      // Return updated product with all relations
-      return this.findOne(product.id);
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+    // Return updated product with all relations
+    return this.findOne(product.id);
   }
 
   async remove(id: string): Promise<void> {

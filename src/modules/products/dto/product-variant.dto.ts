@@ -5,7 +5,6 @@ import { ProductVariantOptionDto } from "./product-variant-option.dto";
 export class ProductVariantDto {
   @ApiProperty({
     description: "Variant unique identifier (Snowflake ID)",
-    example: "1234567890123456789",
     type: String,
   })
   @Expose()
@@ -13,7 +12,6 @@ export class ProductVariantDto {
 
   @ApiProperty({
     description: "Product ID this variant belongs to",
-    example: "9876543210987654321",
     type: String,
   })
   @Expose()

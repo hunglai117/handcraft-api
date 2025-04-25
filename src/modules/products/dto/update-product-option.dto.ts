@@ -5,7 +5,6 @@ import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 export class UpdateProductOptionDto {
   @ApiProperty({
     description: "Option ID",
-    example: "1234567890123456789",
   })
   @IsString()
   @IsNotEmpty()

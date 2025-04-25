@@ -5,7 +5,6 @@ import { IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 export class UpdateProductVariantOptionDto {
   @ApiProperty({
     description: "Variant Option ID",
-    example: "1234567890123456789",
   })
   @IsString()
   @IsNotEmpty()
@@ -14,12 +13,11 @@ export class UpdateProductVariantOptionDto {
 
   @ApiPropertyOptional({
     description: "Option ID this value belongs to",
-    example: "5555555555555555555",
   })
   @IsString()
   @IsOptional()
   @Expose()
-  option_id?: string;
+  optionId?: string;
 
   @ApiPropertyOptional({
     description: "Option value (e.g., Small, Red)",

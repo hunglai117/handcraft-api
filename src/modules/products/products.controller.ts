@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -40,6 +41,9 @@ export class ProductsController {
 
   @Post()
   @ApiOperation({ summary: "Create a new product (admin only)" })
+  @ApiBody({
+    type: CreateProductDto,
+  })
   @ApiResponse({
     status: 201,
     description: "The product has been created successfully.",
@@ -102,6 +106,9 @@ export class ProductsController {
 
   @Put(":id")
   @ApiOperation({ summary: "Update a product (admin only)" })
+  @ApiBody({
+    type: UpdateProductDto,
+  })
   @ApiParam({
     name: "id",
     description: "Product ID",
