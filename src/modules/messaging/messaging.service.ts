@@ -61,9 +61,6 @@ export class MessagingService {
     }
   }
 
-  /**
-   * Emit order created event
-   */
   async emitOrderCreated(orderId: string, orderData: any): Promise<void> {
     return this.emitEvent(OrderEventType.ORDER_CREATED, {
       orderId,
@@ -71,9 +68,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit order status changed event
-   */
   async emitOrderUpdated(
     orderId: string,
     status: string,
@@ -86,9 +80,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit order cancelled event
-   */
   async emitOrderCancelled(orderId: string, reason?: string): Promise<void> {
     return this.emitEvent(OrderEventType.ORDER_CANCELLED, {
       orderId,
@@ -96,9 +87,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit payment processed event
-   */
   async emitPaymentProcessed(
     orderId: string,
     paymentId: string,
@@ -111,9 +99,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit payment failed event
-   */
   async emitPaymentFailed(orderId: string, reason: string): Promise<void> {
     return this.emitEvent(OrderEventType.PAYMENT_FAILED, {
       orderId,
@@ -121,9 +106,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit order shipped event
-   */
   async emitOrderShipped(orderId: string, trackingInfo: any): Promise<void> {
     return this.emitEvent(OrderEventType.ORDER_SHIPPED, {
       orderId,
@@ -131,9 +113,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit inventory reserved event
-   */
   async emitInventoryReserved(orderId: string, items: any[]): Promise<void> {
     return this.emitEvent(OrderEventType.INVENTORY_RESERVED, {
       orderId,
@@ -141,9 +120,6 @@ export class MessagingService {
     });
   }
 
-  /**
-   * Emit inventory released event
-   */
   async emitInventoryReleased(orderId: string, items: any[]): Promise<void> {
     return this.emitEvent(OrderEventType.INVENTORY_RELEASED, {
       orderId,

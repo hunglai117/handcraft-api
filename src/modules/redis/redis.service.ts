@@ -9,12 +9,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   onModuleInit() {
-    // Initialize Redis connection
     this.redisClient = new Redis({
-      host: this.configService.get("REDIS_HOST", "localhost"),
-      port: parseInt(this.configService.get("REDIS_PORT", "6379")),
-      password: this.configService.get("REDIS_PASSWORD", ""),
-      keyPrefix: "ecommerce:",
+      host: this.configService.getOrThrow<string>("redis.host"),
+      port: this.configService.getOrThrow<number>("redis.port"),
+      password: this.configService.getOrThrow<string>("redis.password"),
+      keyPrefix: this.configService.getOrThrow<string>("redis.keyPrefix"),
     });
   }
 
@@ -28,7 +27,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.redisClient;
   }
 
-  // Cache an item with optional expiration in seconds
   async set(key: string, value: any, expireInSeconds?: number): Promise<void> {
     const serialized = JSON.stringify(value);
     if (expireInSeconds) {
@@ -38,7 +36,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Get an item from cache
   async get<T>(key: string): Promise<T | null> {
     const value = await this.redisClient.get(key);
     if (!value) return null;
@@ -49,17 +46,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Delete an item from cache
   async delete(key: string): Promise<void> {
     await this.redisClient.del(key);
   }
 
-  // Check if key exists
   async exists(key: string): Promise<boolean> {
     return (await this.redisClient.exists(key)) === 1;
   }
 
-  // Cache specific methods for orders
   async cacheOrder(
     orderId: string,
     orderData: any,

@@ -1,4 +1,13 @@
 import appConfig from "./app.config";
 import { typeormConfig } from "./typeorm.config";
 import authConfig from "./auth.config";
-export default [appConfig, typeormConfig, authConfig];
+import redisConfig from "./redis.config";
+import rabbitmqConfig from "./rabbitmq.config";
+
+export default [
+  appConfig,
+  typeormConfig,
+  authConfig,
+  redisConfig,
+  rabbitmqConfig,
+];

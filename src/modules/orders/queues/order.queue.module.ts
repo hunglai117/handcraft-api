@@ -15,9 +15,9 @@ import { RedisModule } from "../../redis/redis.module";
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         redis: {
-          host: configService.get("REDIS_HOST", "localhost"),
-          port: parseInt(configService.get("REDIS_PORT", "6379")),
-          password: configService.get("REDIS_PASSWORD", ""),
+          host: configService.getOrThrow<string>("redis.host"),
+          port: configService.getOrThrow<number>("redis.port"),
+          password: configService.getOrThrow<string>("redis.password"),
         },
         defaultJobOptions: {
           attempts: 3,

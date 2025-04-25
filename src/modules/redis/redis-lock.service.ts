@@ -9,12 +9,6 @@ export class RedisLockService {
 
   constructor(private readonly redisService: RedisService) {}
 
-  /**
-   * Acquire a distributed lock
-   * @param lockName The resource being locked
-   * @param timeoutMs Maximum time to wait for lock in milliseconds
-   * @returns Lock identifier if successful, null if failed
-   */
   async acquireLock(
     lockName: string,
     timeoutMs = 5000,
@@ -39,7 +33,6 @@ export class RedisLockService {
         return lockId;
       }
 
-      // Wait for a bit before retrying
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
@@ -47,12 +40,6 @@ export class RedisLockService {
     return null;
   }
 
-  /**
-   * Release a previously acquired lock
-   * @param lockName The resource being unlocked
-   * @param lockId The identifier returned by acquireLock
-   * @returns true if release was successful, false otherwise
-   */
   async releaseLock(lockName: string, lockId: string): Promise<boolean> {
     const client = this.redisService.getClient();
     const lockKey = `lock:${lockName}`;
@@ -80,12 +67,6 @@ export class RedisLockService {
     return success;
   }
 
-  /**
-   * Execute a function with a distributed lock
-   * @param lockName The resource to lock
-   * @param fn The function to execute while holding the lock
-   * @returns The result of the function
-   */
   async withLock<T>(
     lockName: string,
     fn: () => Promise<T>,

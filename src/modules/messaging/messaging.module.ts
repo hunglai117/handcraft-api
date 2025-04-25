@@ -13,15 +13,7 @@ import { MessagingService } from "./messaging.service";
         useFactory: (configService: ConfigService) => ({
           transport: Transport.RMQ,
           options: {
-            urls: [
-              `amqp://${configService.get("RABBITMQ_USER", "guest")}:${configService.get(
-                "RABBITMQ_PASSWORD",
-                "guest",
-              )}@${configService.get("RABBITMQ_HOST", "localhost")}:${configService.get(
-                "RABBITMQ_PORT",
-                "5672",
-              )}`,
-            ],
+            urls: [configService.getOrThrow<string>("rabbitmq.url")],
             queue: "order_events_queue",
             queueOptions: {
               durable: true,

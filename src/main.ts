@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as dotenv from "dotenv";
-import * as path from "path";
+// import * as path from "path";
 dotenv.config();
 
 import { ValidationPipe } from "@nestjs/common";
@@ -21,19 +21,19 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
   // Serve static image files
-  const imagesPath = path.join(process.cwd(), "images");
+  // const imagesPath = path.join(process.cwd(), "images");
 
-  app.use(
-    "/images",
-    express.static(imagesPath, {
-      index: false,
-      maxAge: "1d",
-      setHeaders: (res) => {
-        res.setHeader("Cache-Control", "public, max-age=86400, charset=utf-8");
-        res.setHeader("Vary", "Accept-Encoding");
-      },
-    }),
-  );
+  // app.use(
+  //   "/images",
+  //   express.static(imagesPath, {
+  //     index: false,
+  //     maxAge: "1d",
+  //     setHeaders: (res) => {
+  //       res.setHeader("Cache-Control", "public, max-age=86400, charset=utf-8");
+  //       res.setHeader("Vary", "Accept-Encoding");
+  //     },
+  //   }),
+  // );
 
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
