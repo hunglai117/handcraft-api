@@ -44,8 +44,10 @@ import {
 import { PaginatedUserResponseDto } from "./dto/get-all-user.dto";
 import { UpdateProfileRequestDto } from "./dto/update-profile.dto";
 import { UserDto } from "./dto/user.dto";
+import { UserProviderDto } from "./dto/user-provider.dto";
 import { UserRole } from "./entities/user.entity";
 import { UsersService } from "./users.service";
+import { UserProviderService } from "./user-provider.service";
 
 @ApiTags("Users")
 @Controller("users")
@@ -55,7 +57,10 @@ import { UsersService } from "./users.service";
   type: BadRequestResponseDto,
 })
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly userProviderService: UserProviderService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -161,6 +166,29 @@ export class UsersController {
       updateProfileDto,
     );
     return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Get("profile/providers")
+  @ApiOperation({
+    summary: "Get current user's linked social providers",
+    description:
+      "Retrieve all social providers linked to the authenticated user's account",
+  })
+  @ApiOkResponse({
+    description: "User's linked social providers",
+    type: [UserProviderDto],
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  async getUserProviders(
+    @CurrentUser("sub") userId: string,
+  ): Promise<UserProviderDto[]> {
+    const providers = await this.userProviderService.findAllByUserId(userId);
+    return plainToInstance(UserProviderDto, providers, {
       excludeExtraneousValues: true,
     });
   }

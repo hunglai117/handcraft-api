@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
+import { UserRole } from "../entities/user.entity";
 
 export class UserDto {
   @Expose()
@@ -11,17 +12,10 @@ export class UserDto {
 
   @Expose()
   @ApiProperty({
-    description: "User first name",
-    example: "John",
+    description: "User full name",
+    example: "John Doe",
   })
-  firstName: string;
-
-  @Expose()
-  @ApiProperty({
-    description: "User last name",
-    example: "Doe",
-  })
-  lastName: string;
+  fullName: string;
 
   @Expose()
   @ApiProperty({
@@ -29,6 +23,14 @@ export class UserDto {
     example: "user@example.com",
   })
   email: string;
+
+  @Expose()
+  @ApiProperty({
+    description: "User role",
+    example: "user",
+    enum: UserRole,
+  })
+  role: UserRole;
 
   @Expose()
   @ApiProperty({
@@ -53,22 +55,6 @@ export class UserDto {
     nullable: true,
   })
   city?: string;
-
-  @Expose()
-  @ApiProperty({
-    description: "User state/province",
-    example: "NY",
-    nullable: true,
-  })
-  state?: string;
-
-  @Expose()
-  @ApiProperty({
-    description: "User zip/postal code",
-    example: "10001",
-    nullable: true,
-  })
-  zip?: string;
 
   @Expose()
   @ApiProperty({

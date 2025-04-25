@@ -27,6 +27,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.redisClient;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async set(key: string, value: any, expireInSeconds?: number): Promise<void> {
     const serialized = JSON.stringify(value);
     if (expireInSeconds) {
@@ -41,6 +42,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     if (!value) return null;
     try {
       return JSON.parse(value) as T;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       return null;
     }

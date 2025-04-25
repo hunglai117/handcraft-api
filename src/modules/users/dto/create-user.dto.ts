@@ -1,25 +1,22 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 
 export class CreateUserRequestDto {
   @ApiProperty({
-    description: "User first name",
-    example: "John",
+    description: "User full name",
+    example: "John Doe",
   })
   @IsNotEmpty()
   @IsString()
   @Expose()
-  firstName: string;
-
-  @ApiProperty({
-    description: "User last name",
-    example: "Doe",
-  })
-  @IsNotEmpty()
-  @IsString()
-  @Expose()
-  lastName: string;
+  fullName: string;
 
   @ApiProperty({
     description: "User email address (must be unique)",
@@ -40,6 +37,42 @@ export class CreateUserRequestDto {
   @MinLength(6)
   @Expose()
   password: string;
+
+  @ApiPropertyOptional({
+    description: "User phone number",
+    example: "+1234567890",
+  })
+  @IsOptional()
+  @IsString()
+  @Expose()
+  phone?: string;
+
+  @ApiPropertyOptional({
+    description: "User address",
+    example: "123 Main St",
+  })
+  @IsOptional()
+  @IsString()
+  @Expose()
+  address?: string;
+
+  @ApiPropertyOptional({
+    description: "User city",
+    example: "New York",
+  })
+  @IsOptional()
+  @IsString()
+  @Expose()
+  city?: string;
+
+  @ApiPropertyOptional({
+    description: "User country",
+    example: "USA",
+  })
+  @IsOptional()
+  @IsString()
+  @Expose()
+  country?: string;
 }
 
 export class CreateUserResponseDto {
@@ -51,18 +84,11 @@ export class CreateUserResponseDto {
   id: string;
 
   @ApiProperty({
-    description: "User first name",
-    example: "John",
+    description: "User full name",
+    example: "John Doe",
   })
   @Expose()
-  firstName: string;
-
-  @ApiProperty({
-    description: "User last name",
-    example: "Doe",
-  })
-  @Expose()
-  lastName: string;
+  fullName: string;
 
   @ApiProperty({
     description: "User email address",
@@ -70,6 +96,34 @@ export class CreateUserResponseDto {
   })
   @Expose()
   email: string;
+
+  @ApiPropertyOptional({
+    description: "User phone number",
+    example: "+1234567890",
+  })
+  @Expose()
+  phone?: string;
+
+  @ApiPropertyOptional({
+    description: "User address",
+    example: "123 Main St",
+  })
+  @Expose()
+  address?: string;
+
+  @ApiPropertyOptional({
+    description: "User city",
+    example: "New York",
+  })
+  @Expose()
+  city?: string;
+
+  @ApiPropertyOptional({
+    description: "User country",
+    example: "USA",
+  })
+  @Expose()
+  country?: string;
 
   @ApiProperty({
     description: "Date when the user was created",

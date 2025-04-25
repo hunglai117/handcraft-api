@@ -7,17 +7,22 @@ import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
-import { CreateUserRequestDto } from "../users/dto/create-user.dto";
 import { User } from "../users/entities/user.entity";
 import { UsersService } from "../users/users.service";
 import { AuthPayload } from "./auth.type";
-import { LoginDto } from "./dto/login.dto";
+import { LoginDto, RegisterDto } from "./dto/auth-request.dto";
+import { SocialAuthRequestDto } from "./dto/social-auth.dto";
+import { ProviderHelperService } from "./provider-helper.service";
+import { UserProviderService } from "../users/user-provider.service";
+import { ProviderType } from "../users/entities/user-provider.entity";
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
+    private providerHelperService: ProviderHelperService,
+    private userProviderService: UserProviderService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
@@ -52,8 +57,7 @@ export class AuthService {
     const payload: AuthPayload = {
       sub: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
     };
     const token = this.jwtService.sign(payload);
 
@@ -63,27 +67,175 @@ export class AuthService {
     };
   }
 
-  async register(CreateUserRequestDto: CreateUserRequestDto) {
+  async register(body: RegisterDto) {
     const existingUser = await this.userRepository.findOne({
-      where: { email: CreateUserRequestDto.email },
+      where: { email: body.email },
     });
 
     if (existingUser) {
       throw new BadRequestException("Email already exists");
     }
 
-    const user = await this.usersService.create(CreateUserRequestDto);
+    const user = await this.usersService.create(body);
     const payload: AuthPayload = {
       sub: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
     };
     const token = this.jwtService.sign(payload);
 
     return {
       user,
       token,
+    };
+  }
+
+  async socialLogin(socialAuthDto: SocialAuthRequestDto) {
+    const { token, provider, refreshToken } = socialAuthDto;
+
+    try {
+      // Validate token with provider and get user info
+      const providerUserData =
+        await this.providerHelperService.validateProviderToken(provider, token);
+
+      // Check if we have a user already linked to this provider account
+      const existingProvider = await this.userProviderService.findByProviderId(
+        provider,
+        providerUserData.id,
+      );
+
+      let user: User;
+
+      // If this provider account is already linked to a user
+      if (existingProvider) {
+        user = existingProvider.user;
+
+        // Update tokens
+        await this.userProviderService.update(existingProvider.id, {
+          accessToken: token,
+          refreshToken: refreshToken || null,
+          providerData: providerUserData.data,
+        });
+      } else {
+        // Check if we have a user with the same email
+        const existingUser = await this.userRepository.findOne({
+          where: { email: providerUserData.email },
+        });
+
+        if (existingUser) {
+          // Link this provider to existing user
+          user = existingUser;
+          await this.userProviderService.create(
+            user,
+            provider,
+            providerUserData.id,
+            providerUserData.data,
+            token,
+            refreshToken,
+          );
+        } else {
+          // Create a new user and link provider
+          const newUser = this.userRepository.create({
+            email: providerUserData.email,
+            fullName: providerUserData.name,
+          });
+
+          user = await this.userRepository.save(newUser);
+
+          await this.userProviderService.create(
+            user,
+            provider,
+            providerUserData.id,
+            providerUserData.data,
+            token,
+            refreshToken,
+          );
+        }
+      }
+
+      // Generate token
+      const payload: AuthPayload = {
+        sub: user.id,
+        email: user.email,
+        fullName: user.fullName,
+      };
+      const jwtToken = this.jwtService.sign(payload);
+
+      return {
+        user,
+        token: jwtToken,
+      };
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Failed to authenticate with ${provider}: ${error.message}`,
+      );
+    }
+  }
+
+  async linkProvider(userId: string, socialAuthDto: SocialAuthRequestDto) {
+    const { token, provider, refreshToken } = socialAuthDto;
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+
+    if (!user) {
+      throw new BadRequestException("User not found");
+    }
+
+    // Validate token with provider
+    const providerUserData =
+      await this.providerHelperService.validateProviderToken(provider, token);
+
+    // Check if provider is already linked to another account
+    const existingProvider = await this.userProviderService.findByProviderId(
+      provider,
+      providerUserData.id,
+    );
+
+    if (existingProvider && existingProvider.userId !== userId) {
+      throw new BadRequestException(
+        `This ${provider} account is already linked to another user`,
+      );
+    }
+
+    // If provider already linked to this user, update it
+    if (existingProvider) {
+      await this.userProviderService.update(existingProvider.id, {
+        accessToken: token,
+        refreshToken: refreshToken || null,
+        providerData: providerUserData.data,
+      });
+    } else {
+      // Create new provider link
+      await this.userProviderService.create(
+        user,
+        provider,
+        providerUserData.id,
+        providerUserData.data,
+        token,
+        refreshToken,
+      );
+    }
+
+    return {
+      success: true,
+      message: `Successfully linked ${provider} account`,
+    };
+  }
+
+  async unlinkProvider(userId: string, provider: ProviderType) {
+    const providers = await this.userProviderService.findAllByUserId(userId);
+    const providerToUnlink = providers.find((p) => p.provider === provider);
+
+    if (!providerToUnlink) {
+      throw new BadRequestException(
+        `No ${provider} account linked to this user`,
+      );
+    }
+
+    await this.userProviderService.remove(providerToUnlink.id);
+
+    return {
+      success: true,
+      message: `Successfully unlinked ${provider} account`,
     };
   }
 }

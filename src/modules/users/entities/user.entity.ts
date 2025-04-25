@@ -1,5 +1,6 @@
-import { Column, Entity } from "typeorm";
+import { Column, Entity, OneToMany } from "typeorm";
 import { BaseEntity } from "../../../common/entities/base.entity";
+import { UserProvider } from "./user-provider.entity";
 
 export enum UserRole {
   USER = "user",
@@ -8,16 +9,13 @@ export enum UserRole {
 
 @Entity("users")
 export class User extends BaseEntity {
-  @Column({ name: "first_name", length: 50 })
-  firstName: string;
-
-  @Column({ name: "last_name", length: 50 })
-  lastName: string;
+  @Column({ name: "full_name", length: 100 })
+  fullName: string;
 
   @Column({ unique: true, length: 100 })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   password: string;
 
   @Column({
@@ -37,11 +35,8 @@ export class User extends BaseEntity {
   city: string;
 
   @Column({ nullable: true, length: 100 })
-  state: string;
-
-  @Column({ nullable: true, length: 20 })
-  zip: string;
-
-  @Column({ nullable: true, length: 100 })
   country: string;
+
+  @OneToMany(() => UserProvider, (provider) => provider.user)
+  providers: UserProvider[];
 }

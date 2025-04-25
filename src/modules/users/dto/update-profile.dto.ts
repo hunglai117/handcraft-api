@@ -4,22 +4,13 @@ import { Expose } from "class-transformer";
 
 export class UpdateProfileRequestDto {
   @ApiPropertyOptional({
-    description: "User first name",
-    example: "John",
+    description: "User full name",
+    example: "John Doe",
   })
   @IsOptional()
   @IsString()
   @Expose()
-  firstName?: string;
-
-  @ApiPropertyOptional({
-    description: "User last name",
-    example: "Doe",
-  })
-  @IsOptional()
-  @IsString()
-  @Expose()
-  lastName?: string;
+  fullName?: string;
 
   @ApiPropertyOptional({
     description: "User phone number",
@@ -47,24 +38,6 @@ export class UpdateProfileRequestDto {
   @IsString()
   @Expose()
   city?: string;
-
-  @ApiPropertyOptional({
-    description: "User state/province",
-    example: "NY",
-  })
-  @IsOptional()
-  @IsString()
-  @Expose()
-  state?: string;
-
-  @ApiPropertyOptional({
-    description: "User zip/postal code",
-    example: "10001",
-  })
-  @IsOptional()
-  @IsString()
-  @Expose()
-  zip?: string;
 
   @ApiPropertyOptional({
     description: "User country",
