@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { BullModule } from "@nestjs/bull";
 import { OrdersController } from "./controllers/orders.controller";
 import { CartController } from "./controllers/cart.controller";
 import { OrdersService } from "./services/orders.service";
@@ -13,6 +14,10 @@ import { PaymentTransaction } from "./entities/payment-transaction.entity";
 import { ProductsModule } from "../products/products.module";
 import { UsersModule } from "../users/users.module";
 import { ProductVariant } from "../products/entities/product-variant.entity";
+import { RedisModule } from "../redis/redis.module";
+import { MessagingModule } from "../messaging/messaging.module";
+import { OrderQueueModule } from "./queues/order.queue.module";
+import { OrderEventsListener } from "../messaging/order-events.listener";
 
 @Module({
   imports: [
@@ -25,10 +30,16 @@ import { ProductVariant } from "../products/entities/product-variant.entity";
       PaymentTransaction,
       ProductVariant,
     ]),
+    BullModule.registerQueue({
+      name: "orders",
+    }),
     ProductsModule,
     UsersModule,
+    RedisModule,
+    MessagingModule,
+    OrderQueueModule,
   ],
-  controllers: [OrdersController, CartController],
+  controllers: [OrdersController, CartController, OrderEventsListener],
   providers: [OrdersService, CartService],
   exports: [OrdersService, CartService],
 })

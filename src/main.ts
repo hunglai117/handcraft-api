@@ -12,6 +12,7 @@ import { useContainer } from "class-validator";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import { AppModule } from "./app.module";
 import { ValidationExceptionFilter } from "./common/filters/validation-exception.filter";
+import { MicroserviceOptions, Transport } from "@nestjs/microservices";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -77,6 +78,28 @@ async function bootstrap() {
     SwaggerModule.setup(configService.get("app.swagger.path"), app, document);
     fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
   }
+
+  // Setup RabbitMQ microservice for receiving events
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.RMQ,
+    options: {
+      urls: [
+        `amqp://${configService.get("RABBITMQ_USER", "guest")}:${configService.get(
+          "RABBITMQ_PASSWORD",
+          "guest",
+        )}@${configService.get("RABBITMQ_HOST", "localhost")}:${configService.get(
+          "RABBITMQ_PORT",
+          "5672",
+        )}`,
+      ],
+      queue: "order_events_queue",
+      queueOptions: {
+        durable: true,
+      },
+    },
+  });
+
+  await app.startAllMicroservices();
 
   await app.listen(configService.get("app.port"));
   logger.log(

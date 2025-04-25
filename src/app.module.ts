@@ -1,18 +1,18 @@
 import { Module } from "@nestjs/common";
-import { UsersModule } from "./modules/users/users.module";
-import { SharedModule } from "./modules/shared/shared.module";
-import { ProductsModule } from "./modules/products/products.module";
-import { CategoriesModule } from "./modules/categories/categories.module";
-import { PromotionsModule } from "./modules/promotions/promotions.module";
-import { AuthModule } from "./modules/auth/auth.module";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
-import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
 import { WinstonModule } from "nest-winston";
 import * as winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 import configs from "./config";
+import { AuthModule } from "./modules/auth/auth.module";
+import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
+import { CategoriesModule } from "./modules/categories/categories.module";
 import { OrdersModule } from "./modules/orders/orders.module";
+import { ProductsModule } from "./modules/products/products.module";
+import { PromotionsModule } from "./modules/promotions/promotions.module";
+import { SharedModule } from "./modules/shared/shared.module";
+import { UsersModule } from "./modules/users/users.module";
 
 @Module({
   imports: [

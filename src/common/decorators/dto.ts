@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Transform } from "class-transformer";
 
 export const ToBoolean = () => {
