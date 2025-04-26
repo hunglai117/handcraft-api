@@ -70,13 +70,13 @@ export class OrdersService {
           const productVariant = await transactionalEntityManager.findOne(
             ProductVariant,
             {
-              where: { id: itemDto.productVariantId },
+              where: { id: itemDto.productVariant.id },
             },
           );
 
           if (!productVariant) {
             throw new NotFoundException(
-              `Product variant with ID ${itemDto.productVariantId} not found`,
+              `Product variant with ID ${itemDto.productVariant.id} not found`,
             );
           }
 

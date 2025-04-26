@@ -1,8 +1,12 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, OmitType } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { CategoryDto } from "../../categories/dto/category.dto";
 import { ProductVariantDto } from "./product-variant.dto";
 import { ProductOptionDto } from "./product-option.dto";
+
+class ProductVariantProductDto extends OmitType(ProductVariantDto, [
+  "productId",
+] as const) {}
 
 export class ProductDto {
   @ApiProperty({
@@ -84,8 +88,8 @@ export class ProductDto {
     type: [ProductVariantDto],
   })
   @Expose()
-  @Type(() => ProductVariantDto)
-  variants?: ProductVariantDto[];
+  @Type(() => ProductVariantProductDto)
+  variants?: ProductVariantProductDto[];
 
   @ApiPropertyOptional({
     description: "Product options",

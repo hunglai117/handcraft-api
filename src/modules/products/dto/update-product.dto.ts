@@ -72,6 +72,15 @@ export class UpdateProductDto {
   images?: string[];
 
   @ApiPropertyOptional({
+    description: "URL/path of the featured image for the product",
+    example: "https://example.com/images/bowl1.jpg",
+  })
+  @IsString()
+  @IsOptional()
+  @Expose()
+  featuredImage?: string;
+
+  @ApiPropertyOptional({
     description: "Product variants",
     type: [UpdateProductVariantDto],
   })

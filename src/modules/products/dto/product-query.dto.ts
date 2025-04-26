@@ -43,15 +43,6 @@ export class ProductQueryDto extends PaginationQueryDto {
   maxPrice?: number;
 
   @ApiPropertyOptional({
-    description: "Filter by active status",
-    example: true,
-  })
-  @IsOptional()
-  @ToBoolean()
-  @Expose()
-  isActive?: boolean;
-
-  @ApiPropertyOptional({
     description: "Filter by stock availability (greater than 0)",
     example: true,
   })

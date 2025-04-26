@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 import { ProductVariantDto } from "../../products/dto/product-variant.dto";
 
 export class OrderItemDto {
@@ -17,13 +16,6 @@ export class OrderItemDto {
   })
   @Expose()
   orderId: string;
-
-  @ApiProperty({
-    description: "Product variant identifier",
-    example: "5555555555555555555",
-  })
-  @Expose()
-  productVariantId: string;
 
   @ApiProperty({
     description: "Product variant details",

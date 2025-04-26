@@ -36,7 +36,6 @@ module.exports = [
           caughtErrorsIgnorePattern: "^_|^error$|^err$|^e$",
         },
       ],
-
       // Prettier rules
       "prettier/prettier": "error",
 

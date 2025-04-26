@@ -23,6 +23,9 @@ export class ProductVariantOption extends BaseEntity {
   @JoinColumn({ name: "option_id" })
   option: ProductOption;
 
+  @Column({ name: "order_index", type: "int", nullable: false })
+  orderIndex: number;
+
   @Column({ length: 100, nullable: false })
   value: string;
 }

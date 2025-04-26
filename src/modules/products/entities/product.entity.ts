@@ -28,6 +28,9 @@ export class Product extends BaseEntity {
   @Column({ type: "jsonb", nullable: true })
   images: string[];
 
+  @Column({ length: 255, nullable: true, name: "featured_image" })
+  featuredImage: string;
+
   @Column({
     type: "decimal",
     precision: 12,
@@ -45,6 +48,9 @@ export class Product extends BaseEntity {
     name: "price_max",
   })
   priceMax: number;
+
+  @Column({ type: "boolean", default: true })
+  inStock: boolean;
 
   @OneToMany(() => ProductVariant, (variant) => variant.product, {
     cascade: true,

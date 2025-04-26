@@ -12,6 +12,8 @@ import slugify from "slugify";
 import { PaginationHelper } from "../shared/helpers";
 import { PaginatedResponseDto } from "../shared/dtos/paginated-response.dto";
 import { CategoriesService } from "../categories/categories.service";
+import { CreateSimpleProductDto } from "./dto/create-simple-product.dto";
+import { getRankArray } from "src/common/utils";
 
 @Injectable()
 export class ProductsService {
@@ -38,6 +40,8 @@ export class ProductsService {
           category_id: createProductDto.category_id,
           currency: createProductDto.currency || "VND",
           images: createProductDto.images,
+          featuredImage: createProductDto.featuredImage,
+          inStock: false, // Default to false until we check variants
         });
 
         if (!product.id) {
@@ -46,23 +50,25 @@ export class ProductsService {
 
         product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
 
-        await transactionalEntityManager.save(product);
-
         // Create and save product options
         const options: ProductOption[] = [];
         for (const optionDto of createProductDto.options) {
           const option = this.productOptionRepository.create({
             name: optionDto.name,
-            product_id: product.id,
+            productId: product.id,
           });
           option.generateId();
-          await transactionalEntityManager.save(option);
           options.push(option);
         }
+
+        await transactionalEntityManager.save(options);
 
         // Create and save product variants and variant options
         let minPrice: number | null = null;
         let maxPrice: number | null = null;
+        let hasStock = false; // Track if any variant has stock
+
+        const optionRanks = getRankArray(options.map((o) => o.name));
 
         for (const variantDto of createProductDto.variants) {
           const variant = this.productVariantRepository.create({
@@ -72,10 +78,15 @@ export class ProductsService {
             stockQuantity: variantDto.stockQuantity,
             weight: variantDto.weight,
             image: variantDto.image,
-            product_id: product.id,
+            productId: product.id,
           });
           variant.generateId();
           await transactionalEntityManager.save(variant);
+
+          // Check if variant has stock
+          if (variant.stockQuantity > 0) {
+            hasStock = true;
+          }
 
           // Track min/max price for the product
           if (minPrice === null || variant.price < minPrice) {
@@ -86,6 +97,7 @@ export class ProductsService {
           }
 
           // Create and save variant options
+          const variantOptions: ProductVariantOption[] = [];
           for (const [
             index,
             variantOptionDto,
@@ -94,15 +106,18 @@ export class ProductsService {
               variantId: variant.id,
               optionId: options[index].id,
               value: variantOptionDto.value,
+              orderIndex: optionRanks[index],
             });
             variantOption.generateId();
-            await transactionalEntityManager.save(variantOption);
+            variantOptions.push(variantOption);
           }
+
+          await transactionalEntityManager.save(variantOptions);
         }
 
-        // Update product with price information
         product.priceMin = minPrice || 0;
         product.priceMax = maxPrice || 0;
+        product.inStock = hasStock; // Set inStock based on variant stock quantities
         await transactionalEntityManager.save(product);
 
         return product.id;
@@ -112,9 +127,50 @@ export class ProductsService {
     return this.findOne(productId);
   }
 
-  /**
-   * Find all products with filtering, sorting and pagination
-   */
+  async createSimpleProduct(
+    createSimpleProductDto: CreateSimpleProductDto,
+  ): Promise<Product> {
+    const productId = await this.dataSource.transaction(
+      async (transactionalEntityManager) => {
+        const product = this.productRepository.create({
+          name: createSimpleProductDto.name,
+          description: createSimpleProductDto.description,
+          category_id: createSimpleProductDto.category_id,
+          currency: createSimpleProductDto.currency || "VND",
+          images: createSimpleProductDto.images,
+          featuredImage: createSimpleProductDto.featuredImage,
+          priceMin: createSimpleProductDto.price,
+          priceMax: createSimpleProductDto.price,
+          inStock: (createSimpleProductDto.stockQuantity || 0) > 0, // Set based on stock quantity
+        });
+
+        if (!product.id) {
+          product.generateId();
+        }
+
+        product.slug = `${slugify(product.name, { lower: true })}-p${product.id}`;
+        await transactionalEntityManager.save(product);
+
+        const variant = this.productVariantRepository.create({
+          title: createSimpleProductDto.name,
+          price: createSimpleProductDto.price,
+          sku: createSimpleProductDto.sku,
+          stockQuantity: createSimpleProductDto.stockQuantity || 0,
+          weight: createSimpleProductDto.weight,
+          image: createSimpleProductDto.featuredImage,
+          productId: product.id,
+        });
+
+        variant.generateId();
+        await transactionalEntityManager.save(variant);
+
+        return product.id;
+      },
+    );
+
+    return this.findOne(productId);
+  }
+
   async findAll(
     query: ProductQueryDto,
   ): Promise<PaginatedResponseDto<Product>> {
@@ -123,7 +179,12 @@ export class ProductsService {
 
     let queryBuilder = this.productRepository
       .createQueryBuilder("product")
-      .leftJoinAndSelect("product.category", "category");
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.options", "options")
+      .leftJoinAndSelect("product.variants", "variants")
+      .leftJoinAndSelect("variants.variantOptions", "variantOptions")
+      .orderBy("options.name", "ASC")
+      .addOrderBy("variantOptions.orderIndex", "ASC");
 
     queryBuilder = await this.applyFilters(queryBuilder, filters);
     queryBuilder = this.applySorting(queryBuilder, sortBy);
@@ -138,7 +199,7 @@ export class ProductsService {
     queryBuilder: SelectQueryBuilder<Product>,
     query: Omit<ProductQueryDto, "page" | "limit" | "sortBy">,
   ): Promise<SelectQueryBuilder<Product>> {
-    const { categoryId, minPrice, maxPrice, inStock = true, search } = query;
+    const { categoryId, minPrice, maxPrice, inStock, search } = query;
 
     if (categoryId) {
       const leafCategoryIds =
@@ -150,28 +211,8 @@ export class ProductsService {
 
     queryBuilder = this.applyPriceFilters(queryBuilder, minPrice, maxPrice);
 
-    if (inStock === true) {
-      // For products with variants, we need to check if any variant has stock
-      queryBuilder.andWhere((qb) => {
-        const subQuery = qb
-          .subQuery()
-          .select("variant.product_id")
-          .from(ProductVariant, "variant")
-          .where("variant.stock_quantity > 0")
-          .getQuery();
-        return `product.id IN ${subQuery}`;
-      });
-    } else if (inStock === false) {
-      // All variants must be out of stock
-      queryBuilder.andWhere((qb) => {
-        const subQuery = qb
-          .subQuery()
-          .select("variant.product_id")
-          .from(ProductVariant, "variant")
-          .where("variant.stock_quantity > 0")
-          .getQuery();
-        return `product.id NOT IN ${subQuery}`;
-      });
+    if (inStock !== undefined) {
+      queryBuilder.andWhere("product.inStock = :inStock", { inStock });
     }
 
     if (search) {
@@ -236,52 +277,38 @@ export class ProductsService {
   }
 
   async findOne(id: string): Promise<Product> {
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ["category", "options", "variants", "variants.variantOptions"],
-    });
+    const product = await this.productRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.options", "options")
+      .leftJoinAndSelect("product.variants", "variants")
+      .leftJoinAndSelect("variants.variantOptions", "variantOptions")
+      .where("product.id = :id", { id })
+      .orderBy("options.name", "ASC")
+      .addOrderBy("variantOptions.orderIndex", "ASC")
+      .getOne();
 
     if (!product) {
       throw new NotFoundException(`Product with id ${id} not found`);
-    }
-
-    // Load option values for each variant
-    for (const variant of product.variants) {
-      for (const variantOption of variant.variantOptions) {
-        // Find the option this value belongs to
-        const option = product.options.find(
-          (o) => o.id === variantOption.optionId,
-        );
-        if (option) {
-          variantOption.option = option;
-        }
-      }
     }
 
     return product;
   }
 
   async findBySlug(slug: string): Promise<Product> {
-    const product = await this.productRepository.findOne({
-      where: { slug },
-      relations: ["category", "options", "variants", "variants.variantOptions"],
-    });
+    const product = await this.productRepository
+      .createQueryBuilder("product")
+      .leftJoinAndSelect("product.category", "category")
+      .leftJoinAndSelect("product.options", "options")
+      .leftJoinAndSelect("product.variants", "variants")
+      .leftJoinAndSelect("variants.variantOptions", "variantOptions")
+      .where("product.slug = :slug", { slug })
+      .orderBy("options.name", "ASC")
+      .addOrderBy("variantOptions.orderIndex", "ASC")
+      .getOne();
 
     if (!product) {
       throw new NotFoundException(`Product with slug ${slug} not found`);
-    }
-
-    // Load option values for each variant
-    for (const variant of product.variants) {
-      for (const variantOption of variant.variantOptions) {
-        // Find the option this value belongs to
-        const option = product.options.find(
-          (o) => o.id === variantOption.optionId,
-        );
-        if (option) {
-          variantOption.option = option;
-        }
-      }
     }
 
     return product;
@@ -316,6 +343,10 @@ export class ProductsService {
         product.images = updateProductDto.images;
       }
 
+      if (updateProductDto.featuredImage !== undefined) {
+        product.featuredImage = updateProductDto.featuredImage;
+      }
+
       await transactionalEntityManager.save(product);
 
       // Update product options if provided
@@ -332,7 +363,7 @@ export class ProductsService {
             // Create new option
             const newOption = this.productOptionRepository.create({
               name: optionDto.name,
-              product_id: product.id,
+              productId: product.id,
             });
             newOption.generateId();
             await transactionalEntityManager.save(newOption);
@@ -342,10 +373,11 @@ export class ProductsService {
       }
 
       // Update product variants if provided
-      if (updateProductDto.variants) {
-        let minPrice: number | null = null;
-        let maxPrice: number | null = null;
+      let hasStock = false;
+      let minPrice: number | null = null;
+      let maxPrice: number | null = null;
 
+      if (updateProductDto.variants) {
         for (const variantDto of updateProductDto.variants) {
           if (variantDto.id) {
             // Update existing variant
@@ -378,6 +410,11 @@ export class ProductsService {
               }
 
               await transactionalEntityManager.save(variant);
+
+              // Check stock status
+              if (variant.stockQuantity > 0) {
+                hasStock = true;
+              }
 
               // Update variant options if provided
               if (variantDto.variantOptions) {
@@ -430,10 +467,15 @@ export class ProductsService {
               stockQuantity: variantDto.stockQuantity || 0,
               weight: variantDto.weight,
               image: variantDto.image,
-              product_id: product.id,
+              productId: product.id,
             });
             newVariant.generateId();
             await transactionalEntityManager.save(newVariant);
+
+            // Check stock status
+            if (newVariant.stockQuantity > 0) {
+              hasStock = true;
+            }
 
             // Create new variant options
             if (variantDto.variantOptions) {
@@ -461,13 +503,26 @@ export class ProductsService {
           }
         }
 
-        // Update product price range
+        // Update product price range and stock status
         if (minPrice !== null && maxPrice !== null) {
           product.priceMin = minPrice;
           product.priceMax = maxPrice;
-          await transactionalEntityManager.save(product);
+        }
+      } else {
+        // If variants were not updated, check existing variants for stock
+        if (product.variants && product.variants.length > 0) {
+          for (const variant of product.variants) {
+            if (variant.stockQuantity > 0) {
+              hasStock = true;
+              break;
+            }
+          }
         }
       }
+
+      // Update inStock status
+      product.inStock = hasStock;
+      await transactionalEntityManager.save(product);
     });
 
     // Return updated product with all relations
@@ -477,6 +532,5 @@ export class ProductsService {
   async remove(id: string): Promise<void> {
     const product = await this.findOne(id);
     await this.productRepository.remove(product);
-    // Cascading delete will handle variants, options and their relations
   }
 }

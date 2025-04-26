@@ -15,7 +15,7 @@ export class ProductVariantDto {
     type: String,
   })
   @Expose()
-  product_id: string;
+  productId: string;
 
   @ApiProperty({
     description: "Variant title",

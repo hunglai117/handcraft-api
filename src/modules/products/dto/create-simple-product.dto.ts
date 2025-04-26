@@ -1,18 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Expose, Type } from "class-transformer";
+import { Expose } from "class-transformer";
 import {
-  IsArray,
-  IsJSON,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   MaxLength,
-  ValidateNested,
 } from "class-validator";
-import { CreateProductVariantDto } from "./create-product-variant.dto";
-import { CreateProductOptionDto } from "./create-product-option.dto";
 
-export class CreateProductDto {
+export class CreateSimpleProductDto {
   @ApiProperty({
     description: "The name of the product",
     example: "Handcrafted Wooden Bowl",
@@ -39,6 +36,44 @@ export class CreateProductDto {
   @Expose()
   category_id?: string;
 
+  @ApiProperty({
+    description: "Price of the product",
+    example: 250000,
+  })
+  @IsNumber()
+  @IsPositive()
+  @Expose()
+  price: number;
+
+  @ApiPropertyOptional({
+    description: "SKU (Stock Keeping Unit) of the product",
+    example: "WB-001",
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  @Expose()
+  sku?: string;
+
+  @ApiPropertyOptional({
+    description: "Available stock quantity",
+    example: 10,
+    default: 0,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Expose()
+  stockQuantity?: number = 0;
+
+  @ApiPropertyOptional({
+    description: "Weight of the product in grams",
+    example: 500,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Expose()
+  weight?: number;
+
   @ApiPropertyOptional({
     description: "Currency code",
     example: "VND",
@@ -56,8 +91,8 @@ export class CreateProductDto {
       "https://example.com/images/bowl1.jpg",
       "https://example.com/images/bowl2.jpg",
     ],
+    type: [String],
   })
-  @IsJSON()
   @IsOptional()
   @Expose()
   images?: string[];
@@ -70,24 +105,4 @@ export class CreateProductDto {
   @IsOptional()
   @Expose()
   featuredImage?: string;
-
-  @ApiProperty({
-    description: "Product variants",
-    type: [CreateProductVariantDto],
-  })
-  @ValidateNested({ each: true })
-  @Type(() => CreateProductVariantDto)
-  @IsArray()
-  @Expose()
-  variants: CreateProductVariantDto[];
-
-  @ApiProperty({
-    description: "Product options (e.g., Size, Color)",
-    type: [CreateProductOptionDto],
-  })
-  @ValidateNested({ each: true })
-  @Type(() => CreateProductOptionDto)
-  @IsArray()
-  @Expose()
-  options: CreateProductOptionDto[];
 }

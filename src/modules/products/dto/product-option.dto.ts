@@ -10,28 +10,9 @@ export class ProductOptionDto {
   id: string;
 
   @ApiProperty({
-    description: "Product ID this option belongs to",
-    type: String,
-  })
-  @Expose()
-  product_id: string;
-
-  @ApiProperty({
     description: "Option name",
     example: "Size",
   })
   @Expose()
   name: string;
-
-  @ApiProperty({
-    description: "Created date and time",
-  })
-  @Expose()
-  createdAt: Date;
-
-  @ApiProperty({
-    description: "Last updated date and time",
-  })
-  @Expose()
-  updatedAt: Date;
 }

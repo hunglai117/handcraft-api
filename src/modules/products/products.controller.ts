@@ -25,6 +25,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { NotFoundResponseDto } from "../shared/shared.dto";
 import { UserRole } from "../users/entities/user.entity";
 import { CreateProductDto } from "./dto/create-product.dto";
+import { CreateSimpleProductDto } from "./dto/create-simple-product.dto";
 import {
   PaginatedProductResponseDto,
   ProductQueryDto,
@@ -55,8 +56,35 @@ export class ProductsController {
   async create(
     @Body() createProductDto: CreateProductDto,
   ): Promise<ProductDto> {
-    const resq = await this.productsService.create(createProductDto);
-    return plainToInstance(ProductDto, resq, {
+    const product = await this.productsService.create(createProductDto);
+    return plainToInstance(ProductDto, product, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Post("simple")
+  @ApiOperation({
+    summary: "Create a simple product with a single variant (admin only)",
+  })
+  @ApiBody({
+    type: CreateSimpleProductDto,
+    description: "Simple product data with a single price point",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "The simple product has been created successfully.",
+    type: ProductDto,
+  })
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async createSimple(
+    @Body() createSimpleProductDto: CreateSimpleProductDto,
+  ): Promise<ProductDto> {
+    const product = await this.productsService.createSimpleProduct(
+      createSimpleProductDto,
+    );
+    return plainToInstance(ProductDto, product, {
       excludeExtraneousValues: true,
     });
   }
@@ -72,8 +100,8 @@ export class ProductsController {
   async findAll(
     @Query() query: ProductQueryDto,
   ): Promise<PaginatedProductResponseDto> {
-    const resq = await this.productsService.findAll(query);
-    return plainToInstance(PaginatedProductResponseDto, resq, {
+    const products = await this.productsService.findAll(query);
+    return plainToInstance(PaginatedProductResponseDto, products, {
       excludeExtraneousValues: true,
     });
   }

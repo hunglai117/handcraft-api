@@ -5,8 +5,8 @@ import { ProductVariantOption } from "./product-variant-option.entity";
 
 @Entity("product_variants")
 export class ProductVariant extends BaseEntity {
-  @Column({ type: "bigint", nullable: false })
-  product_id: string;
+  @Column({ name: "product_id", type: "bigint", nullable: false })
+  productId: string;
 
   @ManyToOne(() => Product, (product) => product.variants, {
     onDelete: "CASCADE",
