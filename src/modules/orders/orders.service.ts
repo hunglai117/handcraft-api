@@ -30,7 +30,6 @@ export class OrdersService {
   ) {}
 
   async create(userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
-    // Check if user exists
     await this.usersService.findById(userId);
 
     const orderId = await this.dataSource.transaction(

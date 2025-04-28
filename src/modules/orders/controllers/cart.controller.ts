@@ -21,6 +21,7 @@ import { CartDto } from "../dto/cart.dto";
 import { AddToCartDto } from "../dto/add-to-cart.dto";
 import { UpdateCartItemDto } from "../dto/update-cart-item.dto";
 import { JwtAuthGuard } from "src/modules/auth/jwt-auth.guard";
+import { CurrentUser } from "src/modules/auth/decorators/user.decorator";
 
 @ApiTags("Cart")
 @Controller("cart")
@@ -36,8 +37,7 @@ export class CartController {
     description: "Returns the user's cart",
     type: CartDto,
   })
-  async getUserCart(@Req() req): Promise<CartDto> {
-    const userId = req.user.id;
+  async getUserCart(@CurrentUser("id") userId: string): Promise<CartDto> {
     const cart = await this.cartService.getOrCreateCart(userId);
     const { totalItems, subtotal } =
       await this.cartService.calculateCartTotals(cart);
