@@ -5,7 +5,6 @@ export enum PromotionType {
   PERCENTAGE_DISCOUNT = "PERCENTAGE_DISCOUNT",
   FIXED_AMOUNT_DISCOUNT = "FIXED_AMOUNT_DISCOUNT",
   FREE_SHIPPING = "FREE_SHIPPING",
-  BUY_X_GET_Y_FREE = "BUY_X_GET_Y_FREE",
 }
 
 @Entity("promotions")
@@ -65,7 +64,4 @@ export class Promotion extends BaseEntity {
 
   @Column({ nullable: true, name: "usage_limit" })
   usageLimit: number;
-
-  @Column({ nullable: true, name: "usage_limit_per_user" })
-  usageLimitPerUser: number;
 }

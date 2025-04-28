@@ -102,16 +102,6 @@ export class UpdatePromotionDto {
   usageLimit?: number;
 
   @ApiPropertyOptional({
-    description: "Maximum number of times a user can use this promotion",
-    example: 1,
-  })
-  @IsInt()
-  @Min(0)
-  @IsOptional()
-  @Expose()
-  usageLimitPerUser?: number;
-
-  @ApiPropertyOptional({
     description: "Is the promotion active",
     example: true,
   })
