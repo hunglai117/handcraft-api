@@ -13,4 +13,5 @@ export enum OrderStatus {
   CANCELLED = "cancelled", // Order cancelled
   REFUND_REQUESTED = "refund_requested", // Customer requested a refund
   REFUNDED = "refunded", // Order refunded
+  PARTIALLY_REFUNDED = "partially_refunded", // Partial refund issued
 }
