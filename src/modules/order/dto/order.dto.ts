@@ -67,21 +67,9 @@ export class OrderDto {
   orderPromotions?: OrderPromotionDto[];
 
   @ApiPropertyOptional({
-    description: "Payment information",
-    type: Object,
+    description: "Payment URL for online payment",
+    example: "https://payment.example.com/transaction/123456",
   })
   @Expose()
-  paymentInfo?: Record<string, any>;
-
-  @ApiProperty({
-    description: "Created timestamp",
-  })
-  @Expose()
-  createdAt: Date;
-
-  @ApiProperty({
-    description: "Last updated timestamp",
-  })
-  @Expose()
-  updatedAt: Date;
+  paymentUrl?: string;
 }

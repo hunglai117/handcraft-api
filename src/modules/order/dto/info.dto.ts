@@ -2,7 +2,16 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { IsNotEmpty, IsString } from "class-validator";
 
-export class AddressDto {
+export class InfoDto {
+  @ApiProperty({
+    description: "Phone number",
+    example: "123-456-7890",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Expose()
+  phone: string;
+
   @ApiProperty({
     description: "Street address",
     example: "123 Main St, Apt 4B",
@@ -20,24 +29,6 @@ export class AddressDto {
   @IsNotEmpty()
   @Expose()
   city: string;
-
-  @ApiProperty({
-    description: "State/Province",
-    example: "NY",
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Expose()
-  state: string;
-
-  @ApiProperty({
-    description: "Postal/ZIP code",
-    example: "10001",
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Expose()
-  zipCode: string;
 
   @ApiProperty({
     description: "Country",

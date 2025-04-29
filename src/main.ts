@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as dotenv from "dotenv";
-// import * as path from "path";
 dotenv.config();
 
 import { ValidationPipe } from "@nestjs/common";
@@ -12,28 +11,12 @@ import { useContainer } from "class-validator";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import { AppModule } from "./app.module";
 import { ValidationExceptionFilter } from "./common/filters/validation-exception.filter";
-import { MicroserviceOptions, Transport } from "@nestjs/microservices";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-
-  // Serve static image files
-  // const imagesPath = path.join(process.cwd(), "images");
-
-  // app.use(
-  //   "/images",
-  //   express.static(imagesPath, {
-  //     index: false,
-  //     maxAge: "1d",
-  //     setHeaders: (res) => {
-  //       res.setHeader("Cache-Control", "public, max-age=86400, charset=utf-8");
-  //       res.setHeader("Vary", "Accept-Encoding");
-  //     },
-  //   }),
-  // );
 
   app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
@@ -42,7 +25,9 @@ async function bootstrap() {
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
-  app.setGlobalPrefix(configService.get("app.prefixUrl"));
+  app.setGlobalPrefix(configService.get("app.prefixUrl"), {
+    exclude: ["vnpay-ipn"],
+  });
 
   app.useGlobalFilters(new ValidationExceptionFilter(logger));
 
@@ -61,7 +46,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: true, // or specify your origins
+    origin: true,
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS",
     credentials: true,
   });
@@ -78,28 +63,6 @@ async function bootstrap() {
     SwaggerModule.setup(configService.get("app.swagger.path"), app, document);
     fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
   }
-
-  // Setup RabbitMQ microservice for receiving events
-  app.connectMicroservice<MicroserviceOptions>({
-    transport: Transport.RMQ,
-    options: {
-      urls: [
-        `amqp://${configService.get("RABBITMQ_USER", "guest")}:${configService.get(
-          "RABBITMQ_PASSWORD",
-          "guest",
-        )}@${configService.get("RABBITMQ_HOST", "localhost")}:${configService.get(
-          "RABBITMQ_PORT",
-          "5672",
-        )}`,
-      ],
-      queue: "order_events_queue",
-      queueOptions: {
-        durable: true,
-      },
-    },
-  });
-
-  await app.startAllMicroservices();
 
   await app.listen(configService.get("app.port"));
   logger.log(

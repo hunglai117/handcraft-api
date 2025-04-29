@@ -1,5 +1,4 @@
 export enum OrderStatus {
-  CREATED = "created", // Initial state when order is created but not confirmed
   PENDING = "pending", // Order confirmed but waiting for payment
   PAYMENT_PROCESSING = "payment_processing", // Payment is being processed
   PAID = "paid", // Payment confirmed but order not yet processed

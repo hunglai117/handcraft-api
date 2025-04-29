@@ -1,58 +1,96 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import {
+  ArrayMinSize,
   IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   ValidateNested,
 } from "class-validator";
-import { AddressDto } from "./address.dto";
 import { PaymentInfoDto } from "./payment-info.dto";
 
-export class ApplyPromotionDto {
+// export class ApplyPromotionDto {
+//   @ApiProperty({
+//     description: "Promotion code to apply",
+//     example: "SUMMER20",
+//   })
+//   @IsString()
+//   @IsNotEmpty()
+//   @Expose()
+//   code: string;
+// }
+
+export class InfoDto {
   @ApiProperty({
-    description: "Promotion code to apply",
-    example: "SUMMER20",
+    description: "Phone number",
+    example: "123-456-7890",
   })
   @IsString()
   @IsNotEmpty()
   @Expose()
-  code: string;
+  phone: string;
+
+  @ApiProperty({
+    description: "Street address",
+    example: "123 Main St, Apt 4B",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Expose()
+  address: string;
+
+  @ApiProperty({
+    description: "City",
+    example: "New York",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Expose()
+  city: string;
+
+  @ApiProperty({
+    description: "Country",
+    example: "USA",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Expose()
+  country: string;
 }
 
 export class PlaceOrderDto {
   @ApiProperty({
     description: "Shipping address information",
-    type: AddressDto,
+    type: InfoDto,
   })
   @IsNotEmpty()
   @IsObject()
   @ValidateNested()
-  @Type(() => AddressDto)
+  @Type(() => InfoDto)
   @Expose()
-  shippingAddress: AddressDto;
+  shippingInfo: InfoDto;
 
   @ApiProperty({
     description: "Billing address information",
-    type: AddressDto,
+    type: InfoDto,
   })
   @IsNotEmpty()
   @IsObject()
   @ValidateNested()
-  @Type(() => AddressDto)
+  @Type(() => InfoDto)
   @Expose()
-  billingAddress: AddressDto;
+  billingInfo: InfoDto;
 
-  @ApiPropertyOptional({
-    description: "Promotion code to apply to the order",
-    type: ApplyPromotionDto,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ApplyPromotionDto)
-  @Expose()
-  promotion?: ApplyPromotionDto;
+  // @ApiPropertyOptional({
+  //   description: "Promotion code to apply to the order",
+  //   type: ApplyPromotionDto,
+  // })
+  // @IsOptional()
+  // @ValidateNested()
+  // @Type(() => ApplyPromotionDto)
+  // @Expose()
+  // promotion?: ApplyPromotionDto;
 
   @ApiProperty({
     description: "Payment information",
@@ -72,4 +110,14 @@ export class PlaceOrderDto {
   @IsString()
   @Expose()
   notes?: string;
+
+  @ApiProperty({
+    description: "List of order items",
+    type: [String],
+  })
+  @IsNotEmpty()
+  @Type(() => String)
+  @ArrayMinSize(1, { message: "Order must contain at least 1 item" })
+  @Expose()
+  items: string[];
 }

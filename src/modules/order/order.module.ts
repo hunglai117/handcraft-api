@@ -11,6 +11,8 @@ import { CartModule } from "../cart/cart.module";
 import { RedisModule } from "../redis/redis.module";
 // import { OrderProcessor } from "./processors/order.processor";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { PaymentModule } from "../payment/payment.module";
+import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
 
 @Module({
   imports: [
@@ -19,12 +21,14 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
       OrderItem,
       OrderPromotion,
       ProductVariant,
+      PaymentTransaction,
     ]),
     BullModule.registerQueue({
       name: "orders",
     }),
     RedisModule,
     CartModule,
+    PaymentModule,
     EventEmitterModule.forRoot(),
   ],
   controllers: [OrderController],

@@ -4,8 +4,9 @@ import { BaseEntity } from "../../../common/entities/base.entity";
 import { User } from "../../users/entities/user.entity";
 import { OrderStatus } from "./order-status.enum";
 import { OrderItem } from "./order-item.entity";
-import { PaymentStatus } from "./payment-status.enum";
 import { OrderPromotion } from "./order-promotion.entity";
+import { PaymentStatus } from "src/modules/payment/enums/payment-status.enum";
+import { PaymentTransaction } from "src/modules/payment/entities/payment-transaction.entity";
 
 @Entity("orders")
 export class Order extends BaseEntity {
@@ -34,19 +35,16 @@ export class Order extends BaseEntity {
 
   @Column({
     length: 50,
-    default: PaymentStatus.UNPAID,
+    default: PaymentStatus.PENDING,
     name: "payment_status",
   })
   paymentStatus: string;
 
-  @Column({ type: "jsonb", nullable: true, name: "shipping_address" })
-  shippingAddress: Record<string, any>;
+  @Column({ type: "jsonb", nullable: true, name: "shipping_info" })
+  shippingInfo: Record<string, any>;
 
-  @Column({ type: "jsonb", nullable: true, name: "billing_address" })
-  billingAddress: Record<string, any>;
-
-  @Column({ type: "jsonb", nullable: true, name: "payment_info" })
-  paymentInfo: Record<string, any>;
+  @Column({ type: "jsonb", nullable: true, name: "billing_info" })
+  billingInfo: Record<string, any>;
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
     cascade: true,
@@ -60,7 +58,13 @@ export class Order extends BaseEntity {
   })
   orderPromotions: OrderPromotion[];
 
-  // Define a getter for paymentTransactions that can be populated from the service layer
-  // This avoids direct dependency on the payment module
-  paymentTransactions: any[];
+  @OneToMany(
+    () => PaymentTransaction,
+    (paymentTransaction) => paymentTransaction.order,
+    {
+      cascade: true,
+      eager: true,
+    },
+  )
+  paymentTransactions: PaymentTransaction[];
 }

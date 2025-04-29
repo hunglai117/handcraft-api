@@ -1,29 +1,33 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
+  Injectable,
   Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository, QueryRunner } from "typeorm";
-import { Order } from "../entities/order.entity";
+import { DataSource, EntityManager, QueryRunner, Repository } from "typeorm";
 import { OrderItem } from "../entities/order-item.entity";
-import { OrderPromotion } from "../entities/order-promotion.entity";
-import { PlaceOrderDto } from "../dto/place-order.dto";
-import { CartService } from "../../cart/services/cart.service";
-import { OrderStatus } from "../entities/order-status.enum";
-import { PaymentStatus } from "../entities/payment-status.enum";
-import { Cart } from "../../cart/entities/cart.entity";
-import { v4 as uuidv4 } from "uuid";
-import { ProductVariant } from "../../products/entities/product-variant.entity";
+import { Order } from "../entities/order.entity";
+// import { OrderPromotion } from "../entities/order-promotion.entity";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";
-import { RedisService } from "../../redis/redis.service";
+import { plainToInstance } from "class-transformer";
+import { CartItem } from "src/modules/cart/entities/cart-item.entity";
+import { PaymentTransaction } from "src/modules/payment/entities/payment-transaction.entity";
+import { PaymentStatus } from "src/modules/payment/enums/payment-status.enum";
+import { Cart } from "../../cart/entities/cart.entity";
+import { CartService } from "../../cart/services/cart.service";
+import { PaymentMethod } from "../../payment/enums/payment-method.enum";
+import { VnpayWrapperService } from "../../payment/services/vnpay-wrapper.service";
+import { ProductVariant } from "../../products/entities/product-variant.entity";
 import { RedisLockService } from "../../redis/redis-lock.service";
+import { RedisService } from "../../redis/redis.service";
 import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
 import { PaginationHelper } from "../../shared/helpers/pagination.helper";
-import { plainToInstance } from "class-transformer";
 import { PaginatedOrderResponseDto } from "../dto/order-query.dto";
+import { PaymentInfoDto } from "../dto/payment-info.dto";
+import { PlaceOrderDto } from "../dto/place-order.dto";
+import { OrderStatus } from "../entities/order-status.enum";
 
 @Injectable()
 export class OrderService {
@@ -34,15 +38,18 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
-    @InjectRepository(OrderPromotion)
-    private orderPromotionRepository: Repository<OrderPromotion>,
+    // @InjectRepository(OrderPromotion)
+    // private orderPromotionRepository: Repository<OrderPromotion>,
     @InjectRepository(ProductVariant)
     private productVariantRepository: Repository<ProductVariant>,
+    @InjectRepository(PaymentTransaction)
+    private paymentTransactionRepository: Repository<PaymentTransaction>,
     private cartService: CartService,
     private dataSource: DataSource,
     @InjectQueue("orders") private ordersQueue: Queue,
     private redisService: RedisService,
     private lockService: RedisLockService,
+    private vnpayWrapperService: VnpayWrapperService,
   ) {}
 
   async findAllForUser(
@@ -115,98 +122,98 @@ export class OrderService {
     return order;
   }
 
-  /**
-   * Place a new order from the user's cart - enhanced with distributed locking and queuing
-   */
   async placeOrder(
     userId: string,
     placeOrderDto: PlaceOrderDto,
-  ): Promise<Order> {
+    ipAddr?: string,
+  ) {
     return this.lockService.withLock(
       `user:${userId}:order-creation`,
       async () => {
-        const queryRunner = this.dataSource.createQueryRunner();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-
         try {
-          // 1. Get the user's cart from Redis
-          const cart = await this.cartService.getOrCreateCart(userId);
-
-          if (!cart.cartItems || cart.cartItems.length === 0) {
-            throw new BadRequestException(
-              "Cannot place an order with an empty cart",
-            );
-          }
-
-          // 2. Calculate cart totals
-          const { subtotal } = await this.cartService.calculateCartTotals(cart);
-
-          // 3. Persist the cart from Redis to database only at checkout time
-          await this.cartService.persistCartToDatabase(userId);
-          this.logger.log(
-            `Cart persisted to database for user ${userId} at checkout`,
-          );
-
-          // 4. Create the new order with CREATED initial status
-          const order = this.orderRepository.create({
+          let paymentUrl: string;
+          const selectedCartItemIds = placeOrderDto.items;
+          const cartItems = await this.cartService.getCartItemsByIds(
             userId,
-            orderStatus: OrderStatus.CREATED,
-            totalAmount: subtotal, // Will be updated if promotions are applied
-            paymentStatus: PaymentStatus.UNPAID,
-            shippingAddress: placeOrderDto.shippingAddress,
-            billingAddress: placeOrderDto.billingAddress,
-          });
-          order.generateId();
-          await queryRunner.manager.save(order);
+            selectedCartItemIds,
+          );
 
-          // 5. Create order items from cart items
-          await this.createOrderItemsFromCart(queryRunner, cart, order);
-
-          // 6. Apply promotion if provided
-          if (placeOrderDto.promotion) {
-            // Implement promotion handling - this is a placeholder
-            this.logger.log(
-              `Applying promotion code: ${placeOrderDto.promotion.code}`,
+          if (cartItems.length === 0) {
+            throw new BadRequestException(
+              "None of the selected items were found in your cart",
             );
           }
 
-          // 7. Create payment transaction record
-          await this.createPaymentTransaction(
-            queryRunner,
-            order,
-            placeOrderDto,
+          const { subtotal } =
+            this.cartService.calculateCartItemTotals(cartItems);
+
+          this.logger.log(
+            `Creating order for user ${userId} with ${cartItems.length} selected items`,
           );
 
-          // 8. Change order status to PENDING
-          order.orderStatus = OrderStatus.PENDING;
-          await queryRunner.manager.save(order);
+          const order = await this.dataSource.transaction(async (manager) => {
+            let order = this.orderRepository.create({
+              userId,
+              totalAmount: subtotal,
+              orderStatus: OrderStatus.PENDING,
+              paymentStatus: PaymentStatus.PENDING,
+              shippingInfo: placeOrderDto.shippingInfo,
+              billingInfo: placeOrderDto.billingInfo,
+            });
+            order.generateId();
 
-          // 9. Clear the cart after successful order placement
-          await this.cartService.clearCart(userId);
+            order = await this.createOrderItemsFromSelectedCart(
+              manager,
+              cartItems,
+              order,
+            );
 
-          // 10. Commit transaction
-          await queryRunner.commitTransaction();
+            const transaction = await this.createPaymentTransaction(
+              order,
+              placeOrderDto.paymentInfo,
+            );
 
-          // 11. Add order to the processing queue for async handling
-          await this.addOrderToProcessingQueue(order.id);
+            // Generate payment URL if needed
+            if (
+              placeOrderDto.paymentInfo.paymentMethod === PaymentMethod.VNPAY &&
+              ipAddr
+            ) {
+              paymentUrl = await this.vnpayWrapperService.createPaymentUrl(
+                transaction,
+                ipAddr,
+              );
+            }
 
-          // 12. Cache the order
+            if (!order.paymentTransactions) {
+              order.paymentTransactions = [];
+            }
+
+            order.paymentTransactions.push(transaction);
+
+            await manager.save(order);
+
+            return order;
+          });
+
+          await this.cartService.removeManyCartItemsWithLock(
+            userId,
+            selectedCartItemIds,
+          );
+
+          await this.cartService.persistCartToDatabase(userId);
+
           await this.redisService.cacheOrder(order.id, order);
 
-          // 13. Return the created order with all relations
-          return this.findOne(order.id);
+          return {
+            ...order,
+            ...(paymentUrl ? { paymentUrl } : {}),
+          };
         } catch (error) {
-          // Rollback transaction on error
-          await queryRunner.rollbackTransaction();
           this.logger.error(
             `Error creating order: ${error.message}`,
             error.stack,
           );
           throw error;
-        } finally {
-          // Release query runner
-          await queryRunner.release();
         }
       },
     );
@@ -214,10 +221,6 @@ export class OrderService {
 
   async cancelOrder(id: string, userId: string): Promise<Order> {
     return this.lockService.withLock(`order:${id}:cancel`, async () => {
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
       try {
         const order = await this.findOne(id, userId);
 
@@ -233,104 +236,60 @@ export class OrderService {
           );
         }
 
-        // Update order status
-        order.orderStatus = OrderStatus.CANCELLED;
-        await queryRunner.manager.save(order);
+        // Use transaction to handle order cancellation
+        await this.dataSource.transaction(async (manager) => {
+          // Update order status
+          order.orderStatus = OrderStatus.CANCELLED;
+          await manager.save(order);
 
-        // Handle inventory restoration
-        await this.handleCancelledOrder(order, queryRunner);
+          // Restore product stock quantities
+          for (const item of order.orderItems) {
+            const productVariant = await this.productVariantRepository.findOne({
+              where: { id: item.productVariantId },
+            });
 
-        await queryRunner.commitTransaction();
+            if (productVariant) {
+              productVariant.stockQuantity += item.quantity;
+              await manager.save(productVariant);
+            }
+          }
+        });
 
         // Invalidate cache
         await this.redisService.invalidateOrder(id);
 
         return order;
       } catch (error) {
-        await queryRunner.rollbackTransaction();
         this.logger.error(
           `Error cancelling order ${id}: ${error.message}`,
           error.stack,
         );
         throw error;
-      } finally {
-        await queryRunner.release();
       }
     });
   }
 
-  /**
-   * Add order to processing queue for async processing
-   */
-  private async addOrderToProcessingQueue(orderId: string): Promise<void> {
+  private async handleCancelledOrder(order: Order): Promise<void> {
     try {
-      await this.ordersQueue.add(
-        "process-order",
-        { orderId },
-        {
-          attempts: 3,
-          backoff: {
-            type: "exponential",
-            delay: 1000,
-          },
-        },
-      );
-      this.logger.log(`Order ${orderId} added to processing queue`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to add order ${orderId} to queue: ${error.message}`,
-        error.stack,
-      );
-      // Don't rethrow - we don't want to fail the order creation if queuing fails
-      // Instead, we'll have a background job that checks for unprocessed orders
-    }
-  }
+      await this.dataSource.transaction(async (manager) => {
+        // Restore product stock quantities
+        for (const item of order.orderItems) {
+          const productVariant = await this.productVariantRepository.findOne({
+            where: { id: item.productVariantId },
+          });
 
-  /**
-   * Handle inventory restoration for cancelled orders
-   */
-  private async handleCancelledOrder(
-    order: Order,
-    queryRunner?: QueryRunner,
-  ): Promise<void> {
-    const runner = queryRunner || this.dataSource.createQueryRunner();
-    let localTransaction = false;
-
-    if (!queryRunner) {
-      await runner.connect();
-      await runner.startTransaction();
-      localTransaction = true;
-    }
-
-    try {
-      // Restore product stock quantities
-      for (const item of order.orderItems) {
-        const productVariant = await this.productVariantRepository.findOne({
-          where: { id: item.productVariantId },
-        });
-
-        if (productVariant) {
-          productVariant.stockQuantity += item.quantity;
-          await runner.manager.save(productVariant);
+          if (productVariant) {
+            productVariant.stockQuantity += item.quantity;
+            await manager.save(productVariant);
+          }
         }
-      }
-
-      if (localTransaction) {
-        await runner.commitTransaction();
-      }
+      });
     } catch (error) {
-      if (localTransaction) {
-        await runner.rollbackTransaction();
-      }
       this.logger.error(
         `Error handling cancelled order ${order.id}: ${error.message}`,
         error.stack,
       );
       throw error;
-    } finally {
-      if (localTransaction) {
-        await runner.release();
-      }
     }
   }
 
@@ -381,29 +340,58 @@ export class OrderService {
     await queryRunner.manager.save(order);
   }
 
-  /**
-   * Create payment transaction record for the order
-   */
-  private async createPaymentTransaction(
-    queryRunner: QueryRunner,
+  private async createOrderItemsFromSelectedCart(
+    manager: EntityManager,
+    cartItems: CartItem[],
     order: Order,
-    placeOrderDto: PlaceOrderDto,
-  ): Promise<any> {
-    // Note: PaymentTransaction entity reference is removed since it should be in payment module
-    // Create a transaction record with minimal information
-    const transaction = {
-      orderId: order.id,
-      paymentMethod: placeOrderDto.paymentInfo.paymentMethod,
-      amount: order.totalAmount,
-      transactionId:
-        placeOrderDto.paymentInfo.transactionId || `trx_${uuidv4()}`,
-      paymentStatus: "pending",
-    };
+  ): Promise<Order> {
+    const orderItems: OrderItem[] = [];
 
-    // In a real implementation, this would be handled by a PaymentService
-    // This is just a placeholder to track the basic transaction info
-    order.paymentInfo = transaction;
-    await queryRunner.manager.save(order);
+    for (const cartItem of cartItems) {
+      const productVariant = await this.productVariantRepository.findOne({
+        where: { id: cartItem.productVariantId },
+      });
+
+      if (!productVariant) {
+        throw new NotFoundException(`Product variant not found`);
+      }
+
+      if (productVariant.stockQuantity < cartItem.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock for ${productVariant.title}. Only ${productVariant.stockQuantity} available.`,
+        );
+      }
+
+      const orderItem = this.orderItemRepository.create({
+        orderId: order.id,
+        productVariantId: cartItem.productVariantId,
+        quantity: cartItem.quantity,
+        unitPrice: productVariant.price,
+        totalPrice: productVariant.price * cartItem.quantity,
+      });
+      orderItem.generateId();
+
+      orderItems.push(orderItem);
+
+      productVariant.stockQuantity -= cartItem.quantity;
+      await manager.save(productVariant);
+    }
+
+    order.orderItems = orderItems;
+    return order;
+  }
+
+  private async createPaymentTransaction(
+    order: Order,
+    paymentInfo: PaymentInfoDto,
+  ): Promise<PaymentTransaction> {
+    const transaction = this.paymentTransactionRepository.create({
+      orderId: order.id,
+      paymentMethod: paymentInfo.paymentMethod,
+      amount: order.totalAmount,
+      paymentStatus: PaymentStatus.PENDING,
+    });
+    transaction.generateId();
 
     return transaction;
   }
@@ -463,4 +451,101 @@ export class OrderService {
         break;
     }
   }
+
+  // /**
+  //  * Update order payment status and record payment transaction details
+  //  *
+  //  * @param orderId - The ID of the order to update
+  //  * @param paymentStatus - The new payment status
+  //  * @param paymentDetails - Additional payment details from the payment provider
+  //  * @returns Updated order
+  //  */
+  // async updateOrderPaymentStatus(
+  //   orderId: string,
+  //   paymentStatus: PaymentStatus,
+  //   paymentDetails?: Record<string, any>,
+  // ): Promise<Order> {
+  //   return this.lockService.withLock(`order:${orderId}:payment`, async () => {
+  //     try {
+  //       const order = await this.findOne(orderId);
+
+  //       if (!order) {
+  //         throw new NotFoundException(`Order with ID ${orderId} not found`);
+  //       }
+
+  //       // Update order payment status
+  //       order.paymentStatus = paymentStatus;
+
+  //       // If payment is completed, update order status to processing
+  //       if (paymentStatus === PaymentStatus.COMPLETED) {
+  //         if (order.orderStatus === OrderStatus.PENDING) {
+  //           order.orderStatus = OrderStatus.PROCESSING;
+  //         }
+  //       }
+
+  //       await this.dataSource.transaction(async (manager) => {
+  //         // Create a new payment transaction record
+  //         const transaction = new PaymentTransaction();
+  //         transaction.orderId = order.id;
+  //         transaction.amount = order.totalAmount;
+  //         transaction.paymentStatus = paymentStatus;
+
+  //         // Use the payment method from the first transaction if there is one
+  //         if (
+  //           order.paymentTransactions &&
+  //           order.paymentTransactions.length > 0
+  //         ) {
+  //           transaction.paymentMethod =
+  //             order.paymentTransactions[0].paymentMethod;
+  //         } else {
+  //           transaction.paymentMethod = "vnpay"; // Default to vnpay if no previous transaction
+  //         }
+
+  //         // Set transaction ID if provided
+  //         if (paymentDetails?.transactionId) {
+  //           transaction.transactionId = paymentDetails.transactionId;
+  //         }
+
+  //         // Store additional payment details in metadata
+  //         if (paymentDetails) {
+  //           transaction.metadata = paymentDetails;
+  //         }
+
+  //         transaction.generateId();
+  //         await manager.save(transaction);
+
+  //         // Initialize payment transactions array if not yet initialized
+  //         if (!order.paymentTransactions) {
+  //           order.paymentTransactions = [];
+  //         }
+
+  //         // Add this transaction to the order's payment transactions
+  //         order.paymentTransactions.push(transaction);
+
+  //         // Save the updated order
+  //         await manager.save(order);
+  //       });
+
+  //       // Invalidate cache
+  //       await this.redisService.invalidateOrder(orderId);
+
+  //       // If payment is completed, add to processing queue
+  //       if (paymentStatus === PaymentStatus.COMPLETED) {
+  //         await this.addOrderToProcessingQueue(orderId);
+  //       }
+
+  //       this.logger.log(
+  //         `Payment status for order ${orderId} updated to ${paymentStatus}`,
+  //       );
+
+  //       return order;
+  //     } catch (error) {
+  //       this.logger.error(
+  //         `Error updating payment status for order ${orderId}: ${error.message}`,
+  //         error.stack,
+  //       );
+  //       throw error;
+  //     }
+  //   });
+  // }
 }

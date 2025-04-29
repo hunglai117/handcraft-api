@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Cart } from "../entities/cart.entity";
@@ -16,6 +21,7 @@ export class CartService {
   private readonly CART_TTL = 7 * 24 * 3600;
   private readonly CART_ITEMS_KEY_PREFIX = "cart:";
   private readonly CART_META_KEY_PREFIX = "cart:meta:";
+  private readonly CART_LOCK_PREFIX = "cart-lock:";
   private readonly snowflakeIdGenerator: SnowflakeIdGenerator =
     SnowflakeIdGenerator.getInstance();
 
@@ -38,19 +44,21 @@ export class CartService {
     return `${this.CART_META_KEY_PREFIX}${userId}`;
   }
 
+  private getLockKey(userId: string): string {
+    return `${this.CART_LOCK_PREFIX}${userId}`;
+  }
+
   async getOrCreateCart(userId: string): Promise<Cart> {
     const cartHashKey = this.getCartHashKey(userId);
     const cartMetaKey = this.getCartMetaKey(userId);
     const redisClient = this.redisService.getClient();
 
     try {
-      // Check if cart exists in Redis
       const hasCart = await redisClient.exists(cartHashKey);
 
       if (hasCart) {
         this.logger.debug(`Cache hit for cart:${userId}`);
 
-        // Get cart metadata (id, createdAt, etc)
         const cartMetaJson = await redisClient.get(cartMetaKey);
         let cartMeta: Partial<Cart> = {};
 
@@ -185,13 +193,12 @@ export class CartService {
     const cartHashKey = this.getCartHashKey(userId);
     const redisClient = this.redisService.getClient();
 
-    const lockKey = `cartlock:${userId}`;
+    const lockKey = this.getLockKey(userId);
 
     try {
       return await this.redisLockService.withLock(
         lockKey,
         async () => {
-          // check product exists and has stock
           const productVariant = await this.productVariantRepository.findOne({
             where: { id: productVariantId },
             relations: ["product"],
@@ -201,14 +208,6 @@ export class CartService {
             throw new NotFoundException(`Product variant not found`);
           }
 
-          // Check stock availability
-          if (productVariant.stockQuantity < quantity) {
-            throw new Error(
-              `Insufficient stock. Only ${productVariant.stockQuantity} available.`,
-            );
-          }
-
-          // Check if product already in cart hash
           const existingItemJson = await redisClient.hget(
             cartHashKey,
             productVariantId,
@@ -232,6 +231,12 @@ export class CartService {
               createdAt: new Date(),
               updatedAt: new Date(),
             };
+          }
+
+          if (productVariant.stockQuantity < cartItem.quantity) {
+            throw new BadRequestException(
+              `Insufficient stock. Only ${productVariant.stockQuantity} available.`,
+            );
           }
 
           // Update Redis hash
@@ -261,9 +266,6 @@ export class CartService {
     }
   }
 
-  /**
-   * Update cart item quantity using atomic Redis operations - no database operations
-   */
   async updateCartItemWithLock(
     userId: string,
     itemId: string,
@@ -271,7 +273,7 @@ export class CartService {
   ): Promise<Cart> {
     const cartHashKey = this.getCartHashKey(userId);
     const redisClient = this.redisService.getClient();
-    const lockKey = `cartlock:${userId}`;
+    const lockKey = this.getLockKey(userId);
 
     try {
       return await this.redisLockService.withLock(
@@ -338,7 +340,7 @@ export class CartService {
    */
   async removeCartItemWithLock(userId: string, itemId: string): Promise<Cart> {
     const cartHashKey = this.getCartHashKey(userId);
-    const lockKey = `cartlock:${userId}`;
+    const lockKey = this.getLockKey(userId);
 
     try {
       return await this.redisLockService.withLock(
@@ -378,13 +380,65 @@ export class CartService {
     }
   }
 
-  /**
-   * Clear entire cart in Redis only
-   */
+  async removeManyCartItemsWithLock(
+    userId: string,
+    itemIds: string[],
+  ): Promise<Cart> {
+    const cartHashKey = this.getCartHashKey(userId);
+    const lockKey = this.getLockKey(userId);
+    const redisClient = this.redisService.getClient();
+
+    try {
+      return await this.redisLockService.withLock(
+        lockKey,
+        async () => {
+          const cart = await this.getOrCreateCart(userId);
+          const itemsToRemove = cart.cartItems?.filter((item) =>
+            itemIds.includes(item.id),
+          );
+
+          if (itemsToRemove.length === 0) {
+            throw new NotFoundException(
+              `None of the specified cart items were found`,
+            );
+          }
+
+          // Create a pipeline for batch operations
+          const pipeline = redisClient.pipeline();
+
+          for (const item of itemsToRemove) {
+            pipeline.hdel(cartHashKey, item.productVariantId);
+          }
+
+          await pipeline.exec();
+
+          // If cart is empty after this removal, add placeholder
+          const itemCount = await redisClient.hlen(cartHashKey);
+          if (itemCount === 0) {
+            await redisClient.hset(cartHashKey, "placeholder", "empty");
+          }
+
+          // Refresh TTL
+          await redisClient.expire(cartHashKey, this.CART_TTL);
+          await redisClient.expire(this.getCartMetaKey(userId), this.CART_TTL);
+
+          this.logger.debug(
+            `Removed ${itemsToRemove.length} items from cart for user:${userId}`,
+          );
+          return this.getOrCreateCart(userId);
+        },
+        3000,
+      );
+    } catch (error) {
+      this.logger.error(`Error removing multiple cart items: ${error.message}`);
+      throw error;
+    }
+  }
+
   async clearCartWithLock(userId: string): Promise<void> {
     const cartHashKey = this.getCartHashKey(userId);
     const cartMetaKey = this.getCartMetaKey(userId);
-    const lockKey = `cartlock:${userId}`;
+    const lockKey = this.getLockKey(userId);
 
     try {
       await this.redisLockService.withLock(
@@ -412,9 +466,6 @@ export class CartService {
     }
   }
 
-  /**
-   * Calculate cart totals from cart data in Redis
-   */
   calculateCartTotals(cart: Cart): { totalItems: number; subtotal: number } {
     const totalItems = cart.cartItems.reduce(
       (sum, item) => sum + item.quantity,
@@ -428,10 +479,19 @@ export class CartService {
     return { totalItems, subtotal };
   }
 
-  /**
-   * Persist cart to database only when needed (e.g., at checkout)
-   * This method should be called by OrderService during checkout
-   */
+  calculateCartItemTotals(cartItems: CartItem[]): {
+    totalItems: number;
+    subtotal: number;
+  } {
+    const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = cartItems.reduce((sum, item) => {
+      const price = item.productVariant ? item.productVariant.price : 0;
+      return sum + price * item.quantity;
+    }, 0);
+
+    return { totalItems, subtotal };
+  }
+
   async persistCartToDatabase(userId: string): Promise<Cart> {
     try {
       const cart = await this.getOrCreateCart(userId);
@@ -469,6 +529,27 @@ export class CartService {
       return dbCart;
     } catch (error) {
       this.logger.error(`Error persisting cart to database: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async getCartItemsByIds(
+    userId: string,
+    itemIds: string[],
+  ): Promise<CartItem[]> {
+    try {
+      const cart = await this.getOrCreateCart(userId);
+
+      const filteredItems = cart.cartItems.filter((item) =>
+        itemIds.includes(item.id),
+      );
+
+      this.logger.debug(
+        `Retrieved ${filteredItems.length} specific cart items for user:${userId}`,
+      );
+      return filteredItems;
+    } catch (error) {
+      this.logger.error(`Error getting specific cart items: ${error.message}`);
       throw error;
     }
   }

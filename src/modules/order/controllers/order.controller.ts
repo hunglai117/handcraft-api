@@ -27,6 +27,7 @@ import { OrderDto } from "../dto/order.dto";
 import { PlaceOrderDto } from "../dto/place-order.dto";
 import { OrderService } from "../services/order.service";
 import { UpdateOrderStatusRequestDto } from "../dto/update-order-status.dto";
+import { IpAddress } from "../../../common/decorators/ip-address.decorator";
 
 @ApiTags("Orders")
 @Controller("orders")
@@ -45,9 +46,15 @@ export class OrderController {
   async placeOrder(
     @CurrentUser("id") userId: string,
     @Body() placeOrderDto: PlaceOrderDto,
-  ): Promise<OrderDto> {
-    const order = await this.orderService.placeOrder(userId, placeOrderDto);
-    return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
+    @IpAddress() ipAddr: string,
+  ): Promise<OrderDto | { order: OrderDto; paymentUrl: string }> {
+    const result = await this.orderService.placeOrder(
+      userId,
+      placeOrderDto,
+      ipAddr,
+    );
+
+    return plainToInstance(OrderDto, result, { excludeExtraneousValues: true });
   }
 
   @Get()
