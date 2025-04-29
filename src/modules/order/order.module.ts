@@ -9,7 +9,7 @@ import { OrderPromotion } from "./entities/order-promotion.entity";
 import { ProductVariant } from "../products/entities/product-variant.entity";
 import { CartModule } from "../cart/cart.module";
 import { RedisModule } from "../redis/redis.module";
-import { OrderProcessor } from "./processors/order.processor";
+// import { OrderProcessor } from "./processors/order.processor";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 
 @Module({
@@ -28,7 +28,10 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
     EventEmitterModule.forRoot(),
   ],
   controllers: [OrderController],
-  providers: [OrderService, OrderProcessor],
+  providers: [
+    OrderService,
+    // OrderProcessor
+  ],
   exports: [OrderService],
 })
 export class OrderModule {}

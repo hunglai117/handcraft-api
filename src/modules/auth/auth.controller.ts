@@ -4,7 +4,6 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  UseGuards,
   Delete,
   Param,
 } from "@nestjs/common";
@@ -30,10 +29,9 @@ import { LoginResponseDto, RegisterResponseDto } from "./dto/auth-response.dto";
 import { LoginDto, RegisterDto } from "./dto/auth-request.dto";
 import { SocialAuthRequestDto } from "./dto/social-auth.dto";
 import { ProviderType } from "../users/entities/user-provider.entity";
-import { JwtAuthGuard } from "./jwt-auth.guard";
 import { CurrentUser } from "./decorators/user.decorator";
 
-@ApiTags("Authentication")
+@ApiTags("Authentication-Public")
 @Controller("auth")
 @Public()
 export class AuthController {
@@ -93,7 +91,6 @@ export class AuthController {
     });
   }
 
-  @Public()
   @Post("social-login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -125,8 +122,13 @@ export class AuthController {
       excludeExtraneousValues: true,
     });
   }
+}
 
-  @UseGuards(JwtAuthGuard)
+@ApiTags("Authentication")
+@Controller("auth")
+export class NotPublicAuthController {
+  constructor(private readonly authService: AuthService) {}
+
   @ApiBearerAuth()
   @Post("link-provider")
   @HttpCode(HttpStatus.OK)
@@ -153,7 +155,6 @@ export class AuthController {
     return this.authService.linkProvider(userId, socialAuthDto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Delete("unlink-provider/:provider")
   @HttpCode(HttpStatus.OK)

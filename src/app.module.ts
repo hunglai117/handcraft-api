@@ -7,10 +7,11 @@ import DailyRotateFile from "winston-daily-rotate-file";
 import configs from "./config";
 import { AuthModule } from "./modules/auth/auth.module";
 import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
+import { RolesGuard } from "./modules/auth/guards/roles.guard";
 import { CartModule } from "./modules/cart/cart.module";
 import { CategoriesModule } from "./modules/categories/categories.module";
 import { OrderModule } from "./modules/order/order.module";
-import { PaymentModule } from "./modules/payment/payment.module";
+// import { PaymentModule } from "./modules/payment/payment.module";
 import { ProductsModule } from "./modules/products/products.module";
 import { PromotionsModule } from "./modules/promotions/promotions.module";
 import { SharedModule } from "./modules/shared/shared.module";
@@ -23,9 +24,9 @@ import { UsersModule } from "./modules/users/users.module";
     ProductsModule,
     CategoriesModule,
     PromotionsModule,
-    CartModule, // New cart module
-    OrderModule, // New order module
-    PaymentModule, // New payment module
+    CartModule,
+    OrderModule,
+    // PaymentModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: configs,
@@ -127,6 +128,10 @@ import { UsersModule } from "./modules/users/users.module";
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

@@ -6,7 +6,7 @@ import { AuthService } from "./auth.service";
 import { ProviderHelperService } from "./provider-helper.service";
 import { JwtStrategy } from "./jwt.strategy";
 import { UsersModule } from "../users/users.module";
-import { AuthController } from "./auth.controller";
+import { AuthController, NotPublicAuthController } from "./auth.controller";
 import { HttpModule } from "@nestjs/axios";
 
 @Module({
@@ -26,7 +26,7 @@ import { HttpModule } from "@nestjs/axios";
     }),
   ],
   providers: [AuthService, JwtStrategy, ProviderHelperService],
-  controllers: [AuthController],
+  controllers: [AuthController, NotPublicAuthController],
   exports: [AuthService],
 })
 export class AuthModule {}

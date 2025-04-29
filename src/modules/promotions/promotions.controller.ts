@@ -9,7 +9,6 @@ import {
   Patch,
   Post,
   Put,
-  UseGuards,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -20,7 +19,6 @@ import {
 } from "@nestjs/swagger";
 import { plainToInstance } from "class-transformer";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { RolesGuard } from "../auth/guards/roles.guard";
 import {
   BadRequestResponseDto,
   NotFoundResponseDto,
@@ -34,6 +32,7 @@ import { PromotionsService } from "./promotions.service";
 
 @ApiTags("Promotions")
 @Controller("promotions")
+@ApiBearerAuth()
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
@@ -49,8 +48,6 @@ export class PromotionsController {
     description: "Invalid input data.",
     type: BadRequestResponseDto,
   })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   async create(
     @Body() createPromotionDto: CreatePromotionDto,
@@ -105,8 +102,6 @@ export class PromotionsController {
     description: "Invalid input data.",
     type: BadRequestResponseDto,
   })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   async update(
     @Param("id") id: string,
@@ -139,8 +134,6 @@ export class PromotionsController {
     description: "Promotion not found.",
     type: NotFoundResponseDto,
   })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   async remove(@Param("id") id: string): Promise<void> {
     return this.promotionsService.remove(id);
@@ -164,8 +157,6 @@ export class PromotionsController {
     description: "Promotion not found.",
     type: NotFoundResponseDto,
   })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   async toggleActive(@Param("id") id: string): Promise<PromotionDto> {
     const promotion = await this.promotionsService.toggleActive(id);

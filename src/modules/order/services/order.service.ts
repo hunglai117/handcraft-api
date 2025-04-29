@@ -130,7 +130,7 @@ export class OrderService {
         await queryRunner.startTransaction();
 
         try {
-          // 1. Get the user's cart
+          // 1. Get the user's cart from Redis
           const cart = await this.cartService.getOrCreateCart(userId);
 
           if (!cart.cartItems || cart.cartItems.length === 0) {
@@ -142,7 +142,13 @@ export class OrderService {
           // 2. Calculate cart totals
           const { subtotal } = await this.cartService.calculateCartTotals(cart);
 
-          // 3. Create the new order with CREATED initial status
+          // 3. Persist the cart from Redis to database only at checkout time
+          await this.cartService.persistCartToDatabase(userId);
+          this.logger.log(
+            `Cart persisted to database for user ${userId} at checkout`,
+          );
+
+          // 4. Create the new order with CREATED initial status
           const order = this.orderRepository.create({
             userId,
             orderStatus: OrderStatus.CREATED,
@@ -154,10 +160,10 @@ export class OrderService {
           order.generateId();
           await queryRunner.manager.save(order);
 
-          // 4. Create order items from cart items
+          // 5. Create order items from cart items
           await this.createOrderItemsFromCart(queryRunner, cart, order);
 
-          // 5. Apply promotion if provided
+          // 6. Apply promotion if provided
           if (placeOrderDto.promotion) {
             // Implement promotion handling - this is a placeholder
             this.logger.log(
@@ -165,30 +171,30 @@ export class OrderService {
             );
           }
 
-          // 6. Create payment transaction record
+          // 7. Create payment transaction record
           await this.createPaymentTransaction(
             queryRunner,
             order,
             placeOrderDto,
           );
 
-          // 7. Change order status to PENDING
+          // 8. Change order status to PENDING
           order.orderStatus = OrderStatus.PENDING;
           await queryRunner.manager.save(order);
 
-          // 8. Clear the cart after successful order placement
+          // 9. Clear the cart after successful order placement
           await this.cartService.clearCart(userId);
 
-          // 9. Commit transaction
+          // 10. Commit transaction
           await queryRunner.commitTransaction();
 
-          // 10. Add order to the processing queue for async handling
+          // 11. Add order to the processing queue for async handling
           await this.addOrderToProcessingQueue(order.id);
 
-          // 11. Cache the order
+          // 12. Cache the order
           await this.redisService.cacheOrder(order.id, order);
 
-          // 12. Return the created order with all relations
+          // 13. Return the created order with all relations
           return this.findOne(order.id);
         } catch (error) {
           // Rollback transaction on error

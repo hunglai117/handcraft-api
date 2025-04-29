@@ -6,10 +6,11 @@ import { CartController } from "./controllers/cart.controller";
 import { CartService } from "./services/cart.service";
 import { ProductsModule } from "../products/products.module";
 import { RedisModule } from "../redis/redis.module";
+import { ProductVariant } from "../products/entities/product-variant.entity";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Cart, CartItem]),
+    TypeOrmModule.forFeature([Cart, CartItem, ProductVariant]),
     ProductsModule,
     RedisModule,
   ],
