@@ -17,6 +17,7 @@ import { VnpayWrapperService } from "../services/vnpay-wrapper.service";
 
 @ApiTags("Payment-Vnpay")
 @Controller("payment/vnpay")
+@Public()
 export class VnpayController {
   private readonly logger = new Logger(VnpayController.name);
 
@@ -25,7 +26,6 @@ export class VnpayController {
     private readonly orderService: OrderService,
   ) {}
 
-  @Public()
   @Get("ipn")
   @ApiOperation({ summary: "Handle VNPay IPN (Instant Payment Notification)" })
   @ApiResponse({
@@ -33,6 +33,7 @@ export class VnpayController {
     description: "VNPay IPN response",
   })
   async handleIpn(@Query() query: ReturnQueryFromVNPay) {
+    this.logger.log("Received IPN request from VNPay", query);
     try {
       // Verify the IPN request from VNPay
       const verify = await this.vnpayWrapperService.verifyIpnCall(query);
@@ -52,72 +53,83 @@ export class VnpayController {
       }
 
       // Find the order in the database
-      try {
-        const foundOrder = await this.orderService.findOne(verify.vnp_TxnRef);
+      const foundOrder = await this.orderService.findOne(verify.vnp_TxnRef);
 
-        // If order not found or order ID doesn't match
-        if (!foundOrder) {
-          this.logger.warn(
-            `IPN verification failed: order not found ${verify.vnp_TxnRef}`,
-          );
-          return IpnOrderNotFound;
-        }
-
-        // If the payment amount doesn't match
-        // Note: VNPay amount is in VND with last 2 digits representing decimal points
-        // Convert amounts to numbers for comparison
-        const orderAmount = Number(foundOrder.totalAmount) * 100; // Convert to VNPay format (no decimal point)
-        const vnpayAmount = Number(verify.vnp_Amount);
-
-        if (orderAmount !== vnpayAmount) {
-          this.logger.warn(
-            `IPN verification failed: amount mismatch for order ${verify.vnp_TxnRef}. ` +
-              `Expected: ${orderAmount}, Received: ${vnpayAmount}`,
-          );
-          return IpnInvalidAmount;
-        }
-
-        // If order has already been confirmed/completed
-        if (
-          foundOrder.paymentStatus === PaymentStatus.COMPLETED ||
-          foundOrder.orderStatus === OrderStatus.COMPLETED
-        ) {
-          this.logger.warn(
-            `IPN verification failed: order already confirmed ${verify.vnp_TxnRef}`,
-          );
-          return InpOrderAlreadyConfirmed;
-        }
-
-        // Update order status
-        // await this.orderService.updateOrderPaymentStatus(
-        //   foundOrder.id,
-        //   PaymentStatus.COMPLETED,
-        //   {
-        //     transactionId: verify.vnp_TransactionNo,
-        //     bankCode: verify.vnp_BankCode,
-        //     cardType: verify.vnp_CardType,
-        //     payDate: verify.vnp_PayDate,
-        //     responseCode: verify.vnp_ResponseCode,
-        //   },
-        // );
-
-        this.logger.log(
-          `IPN verification successful: order ${verify.vnp_TxnRef} payment completed`,
+      // If order not found or order ID doesn't match
+      if (!foundOrder) {
+        this.logger.warn(
+          `IPN verification failed: order not found ${verify.vnp_TxnRef}`,
         );
-        return IpnSuccess;
-      } catch (error) {
-        this.logger.error(
-          `Error finding or updating order: ${error.message}`,
-          error.stack,
-        );
-        return IpnUnknownError;
+        return IpnOrderNotFound;
       }
+
+      const orderAmount = foundOrder.totalAmount;
+      const vnpayAmount = verify.vnp_Amount;
+
+      if (orderAmount !== vnpayAmount) {
+        this.logger.warn(
+          `IPN verification failed: amount mismatch for order ${verify.vnp_TxnRef}. ` +
+            `Expected: ${orderAmount}, Received: ${vnpayAmount}`,
+        );
+        return IpnInvalidAmount;
+      }
+
+      // If order has already been confirmed/completed
+      if (
+        foundOrder.paymentStatus === PaymentStatus.COMPLETED ||
+        foundOrder.orderStatus === OrderStatus.COMPLETED
+      ) {
+        this.logger.warn(
+          `IPN verification failed: order already confirmed ${verify.vnp_TxnRef}`,
+        );
+        return InpOrderAlreadyConfirmed;
+      }
+
+      // Update order status
+      // await this.orderService.updateOrderPaymentStatus(
+      //   foundOrder.id,
+      //   PaymentStatus.COMPLETED,
+      //   {
+      //     transactionId: verify.vnp_TransactionNo,
+      //     bankCode: verify.vnp_BankCode,
+      //     cardType: verify.vnp_CardType,
+      //     payDate: verify.vnp_PayDate,
+      //     responseCode: verify.vnp_ResponseCode,
+      //   },
+      // );
+
+      this.logger.log(
+        `IPN verification successful: order ${verify.vnp_TxnRef} payment completed`,
+      );
+      return IpnSuccess;
     } catch (error) {
       this.logger.error(
         `IPN verification error: ${error.message}`,
         error.stack,
       );
       return IpnUnknownError;
+    }
+  }
+
+  @Get("return")
+  @ApiOperation({ summary: "Handle VNPay return URL" })
+  @ApiResponse({
+    status: 200,
+    description: "VNPay return URL response",
+  })
+  async handleReturn(@Query() query: ReturnQueryFromVNPay) {
+    this.logger.log("Received return URL request from VNPay", query);
+    try {
+      const verify = await this.vnpayWrapperService.verifyReturnUrl(query);
+      if (!verify.isVerified) {
+        return "Xác thực tính toàn vẹn dữ liệu thất bại";
+      }
+      if (!verify.isSuccess) {
+        return "Đơn hàng thanh toán thất bại";
+      }
+      return "Xác thực URL trả về thành công";
+    } catch (error) {
+      return "Dữ liệu không hợp lệ";
     }
   }
 }

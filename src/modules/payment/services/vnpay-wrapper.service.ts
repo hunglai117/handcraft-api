@@ -41,4 +41,10 @@ export class VnpayWrapperService {
   async verifyIpnCall(params: ReturnQueryFromVNPay): Promise<VerifyReturnUrl> {
     return this.vnpayService.verifyIpnCall(params);
   }
+
+  async verifyReturnUrl(
+    params: ReturnQueryFromVNPay,
+  ): Promise<VerifyReturnUrl> {
+    return this.vnpayService.verifyReturnUrl(params);
+  }
 }
