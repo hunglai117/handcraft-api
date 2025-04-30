@@ -13,10 +13,10 @@ export class UserProviderService {
 
   async findByProviderId(
     provider: ProviderType,
-    providerId: string,
+    providerUserId: string,
   ): Promise<UserProvider | null> {
     return this.userProviderRepository.findOne({
-      where: { provider, providerId },
+      where: { provider, providerUserId },
       relations: ["user"],
     });
   }
@@ -24,14 +24,14 @@ export class UserProviderService {
   async create(
     user: User,
     provider: ProviderType,
-    providerId: string,
+    providerUserId: string,
     providerData?: Record<string, any>,
   ): Promise<UserProvider> {
     const userProvider = this.userProviderRepository.create({
       user,
       userId: user.id,
       provider,
-      providerId,
+      providerUserId,
       providerData,
     });
 

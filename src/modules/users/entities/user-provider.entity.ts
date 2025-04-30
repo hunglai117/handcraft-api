@@ -24,8 +24,8 @@ export class UserProvider extends BaseEntity {
   })
   provider: ProviderType;
 
-  @Column({ name: "provider_id", length: 255 })
-  providerId: string;
+  @Column({ name: "provider_user_id", length: 255 })
+  providerUserId: string;
 
   @Column({ name: "provider_data", type: "json", nullable: true })
   providerData: Record<string, any>;

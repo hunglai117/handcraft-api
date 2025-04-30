@@ -49,7 +49,7 @@ export class Product extends BaseEntity {
   })
   priceMax: number;
 
-  @Column({ type: "boolean", default: true })
+  @Column({ type: "boolean", default: true, name: "in_stock" })
   inStock: boolean;
 
   @OneToMany(() => ProductVariant, (variant) => variant.product, {

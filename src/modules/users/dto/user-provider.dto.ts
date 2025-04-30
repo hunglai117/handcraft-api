@@ -22,7 +22,7 @@ export class UserProviderDto {
     description: "Provider-specific ID for this user",
     example: "12345678901234567890",
   })
-  providerId: string;
+  providerUserId: string;
 
   @Expose()
   @ApiProperty({

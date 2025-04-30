@@ -4,11 +4,11 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
   Query,
-  UseGuards,
 } from "@nestjs/common";
 import {
   ApiBadRequestResponse,
@@ -28,7 +28,6 @@ import {
 import { plainToInstance } from "class-transformer";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { CurrentUser } from "../auth/decorators/user.decorator";
-import { RolesGuard } from "../auth/guards/roles.guard";
 import { PaginationQueryDto } from "../shared/dtos/pagination.dto";
 import {
   BadRequestResponseDto,
@@ -43,28 +42,24 @@ import {
 } from "./dto/create-user.dto";
 import { PaginatedUserResponseDto } from "./dto/get-all-user.dto";
 import { UpdateProfileRequestDto } from "./dto/update-profile.dto";
-import { UserDto } from "./dto/user.dto";
 import { UserProviderDto } from "./dto/user-provider.dto";
+import { UserDto } from "./dto/user.dto";
 import { UserRole } from "./entities/user.entity";
-import { UsersService } from "./users.service";
 import { UserProviderService } from "./user-provider.service";
+import { UsersService } from "./users.service";
 
-@ApiTags("Users")
+@ApiTags("Users-Admin")
 @Controller("users")
 @ApiBearerAuth()
 @ApiBadRequestResponse({
   description: "Bad request",
   type: BadRequestResponseDto,
 })
-export class UsersController {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly userProviderService: UserProviderService,
-  ) {}
+@Roles(UserRole.ADMIN)
+export class AdminUsersController {
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Create user (admin only)",
   })
@@ -95,8 +90,6 @@ export class UsersController {
   }
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   @ApiOperation({
     summary: "Get all users (admin only)",
   })
@@ -120,6 +113,76 @@ export class UsersController {
       excludeExtraneousValues: true,
     });
   }
+
+  @Get(":id")
+  @ApiOperation({
+    summary: "Get user by ID (admin only)",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  @ApiOkResponse({ description: "User details", type: UserDto })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
+  async findOne(@Param("id") id: string): Promise<UserDto> {
+    const user = await this.usersService.findById(id);
+    return plainToInstance(UserDto, user, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Delete(":id")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Delete user (admin only)",
+  })
+  @ApiParam({
+    name: "id",
+    description: "User ID",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  @ApiNoContentResponse({ description: "User successfully deleted" })
+  @ApiNotFoundResponse({
+    description: "User not found",
+    type: NotFoundResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Unauthorized",
+    type: UnauthorizedResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: "Forbidden - Requires admin role",
+    type: ForbiddenResponseDto,
+  })
+  remove(@Param("id") id: string): Promise<void> {
+    return this.usersService.remove(id);
+  }
+}
+
+@ApiTags("Users")
+@Controller("users")
+@ApiBearerAuth()
+@ApiBadRequestResponse({
+  description: "Bad request",
+  type: BadRequestResponseDto,
+})
+export class UsersController {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly userProviderService: UserProviderService,
+  ) {}
 
   @Get("profile")
   @ApiOperation({
@@ -191,65 +254,5 @@ export class UsersController {
     return plainToInstance(UserProviderDto, providers, {
       excludeExtraneousValues: true,
     });
-  }
-
-  @Get(":id")
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: "Get user by ID (admin only)",
-  })
-  @ApiParam({
-    name: "id",
-    description: "User ID",
-    example: "550e8400-e29b-41d4-a716-446655440000",
-  })
-  @ApiOkResponse({ description: "User details", type: UserDto })
-  @ApiNotFoundResponse({
-    description: "User not found",
-    type: NotFoundResponseDto,
-  })
-  @ApiUnauthorizedResponse({
-    description: "Unauthorized",
-    type: UnauthorizedResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: "Forbidden - Requires admin role",
-    type: ForbiddenResponseDto,
-  })
-  async findOne(@Param("id") id: string): Promise<UserDto> {
-    const user = await this.usersService.findById(id);
-    return plainToInstance(UserDto, user, {
-      excludeExtraneousValues: true,
-    });
-  }
-
-  @Delete(":id")
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @HttpCode(204)
-  @ApiOperation({
-    summary: "Delete user (admin only)",
-  })
-  @ApiParam({
-    name: "id",
-    description: "User ID",
-    example: "550e8400-e29b-41d4-a716-446655440000",
-  })
-  @ApiNoContentResponse({ description: "User successfully deleted" })
-  @ApiNotFoundResponse({
-    description: "User not found",
-    type: NotFoundResponseDto,
-  })
-  @ApiUnauthorizedResponse({
-    description: "Unauthorized",
-    type: UnauthorizedResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: "Forbidden - Requires admin role",
-    type: ForbiddenResponseDto,
-  })
-  remove(@Param("id") id: string): Promise<void> {
-    return this.usersService.remove(id);
   }
 }
