@@ -1,6 +1,16 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose, Type } from "class-transformer";
+import { Expose, Transform, Type } from "class-transformer";
 import { ProductVariantDto } from "../../products/dto/product-variant.dto";
+
+export class CartItemProductVariantDto extends ProductVariantDto {
+  @ApiProperty({
+    description: "Product name",
+    example: "Blue Bowl",
+  })
+  @Expose()
+  @Transform(({ obj }) => obj.product.name)
+  productName: string;
+}
 
 export class CartItemDto {
   @ApiProperty({
@@ -18,19 +28,12 @@ export class CartItemDto {
   cartId: string;
 
   @ApiProperty({
-    description: "Product variant identifier",
-    example: "5555555555555555555",
-  })
-  @Expose()
-  productVariantId: string;
-
-  @ApiProperty({
     description: "Product variant details",
-    type: ProductVariantDto,
+    type: CartItemProductVariantDto,
   })
   @Expose()
-  @Type(() => ProductVariantDto)
-  productVariant: ProductVariantDto;
+  @Type(() => CartItemProductVariantDto)
+  productVariant: CartItemProductVariantDto;
 
   @ApiProperty({
     description: "Quantity of this item in the cart",

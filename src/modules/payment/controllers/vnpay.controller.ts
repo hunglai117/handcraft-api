@@ -64,7 +64,7 @@ export class VnpayController {
       }
 
       const orderAmount = foundOrder.totalAmount;
-      const vnpayAmount = verify.vnp_Amount;
+      const vnpayAmount = Number(verify.vnp_Amount) / 100;
 
       if (orderAmount !== vnpayAmount) {
         this.logger.warn(

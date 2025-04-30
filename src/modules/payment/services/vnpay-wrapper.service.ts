@@ -6,6 +6,7 @@ import {
   VnpLocale,
   VerifyReturnUrl,
   ReturnQueryFromVNPay,
+  dateFormat,
 } from "vnpay";
 import { PaymentTransaction } from "../entities/payment-transaction.entity";
 
@@ -23,7 +24,8 @@ export class VnpayWrapperService {
     const orderType = ProductCode.Other;
     const locale = VnpLocale.VN;
     const bankCode = "";
-
+    const createDate = new Date();
+    const expireDate = new Date(createDate.getTime() + 60 * 60 * 1000);
     const paymentUrl = this.vnpayService.buildPaymentUrl({
       vnp_Amount: amount,
       vnp_IpAddr: ipAddr,
@@ -33,6 +35,8 @@ export class VnpayWrapperService {
       vnp_Locale: locale,
       vnp_ReturnUrl: this.configService.get("vnpay.returnUrl"),
       ...(bankCode ? { vnp_BankCode: bankCode } : {}),
+      vnp_CreateDate: dateFormat(createDate),
+      vnp_ExpireDate: dateFormat(expireDate),
     });
 
     return paymentUrl;

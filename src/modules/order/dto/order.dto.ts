@@ -37,18 +37,11 @@ export class OrderDto {
   paymentStatus: string;
 
   @ApiProperty({
-    description: "Shipping address",
+    description: "Shipping info",
     type: Object,
   })
   @Expose()
-  shippingAddress: Record<string, any>;
-
-  @ApiProperty({
-    description: "Billing address",
-    type: Object,
-  })
-  @Expose()
-  billingAddress: Record<string, any>;
+  shippingInfo: Record<string, any>;
 
   @ApiProperty({
     description: "Items in the order",

@@ -96,9 +96,56 @@ export class CartService {
         return cart;
       }
 
+      // Cart not found in Redis, check database
       this.logger.debug(
-        `No cart found for user:${userId}, creating new cart in Redis only`,
+        `No cart found in Redis for user:${userId}, checking database`,
       );
+
+      const dbCart = await this.cartRepository.findOne({
+        where: { userId },
+        relations: {
+          cartItems: {
+            productVariant: {
+              product: true,
+              variantOptions: true,
+            },
+          },
+        },
+        select: {
+          cartItems: {
+            id: true,
+            quantity: true,
+            productVariantId: true,
+            productVariant: {
+              id: true,
+              price: true,
+              title: true,
+              sku: true,
+              image: true,
+              product: {
+                name: true,
+              },
+              variantOptions: {
+                value: true,
+                orderIndex: true,
+              },
+            },
+          },
+        },
+      });
+
+      if (dbCart) {
+        this.logger.debug(
+          `Found cart in database for user:${userId}, loading to Redis`,
+        );
+
+        await this.storeCartInRedis(userId, dbCart);
+
+        return dbCart;
+      }
+
+      // No cart in Redis or database, create new
+      this.logger.debug(`No cart found for user:${userId}, creating new cart`);
 
       const cart = new Cart();
       cart.id = this.snowflakeIdGenerator.generateId().toString();
@@ -112,7 +159,7 @@ export class CartService {
 
       return cart;
     } catch (error) {
-      this.logger.error(`Error getting cart from Redis: ${error.message}`);
+      this.logger.error(`Error getting cart: ${error.message}`);
 
       // If Redis fails, return an empty cart
       const fallbackCart = new Cart();
@@ -132,7 +179,6 @@ export class CartService {
     const redisClient = this.redisService.getClient();
 
     try {
-      // Store cart metadata
       const cartMeta = {
         id: cart.id,
         userId: cart.userId,
@@ -165,7 +211,6 @@ export class CartService {
             updatedAt: new Date(),
           };
 
-          // Use productVariantId as the field name in the hash
           pipeline.hset(
             cartHashKey,
             item.productVariantId,
@@ -191,8 +236,8 @@ export class CartService {
   async addToCart(userId: string, addToCartDto: AddToCartDto): Promise<Cart> {
     const { productVariantId, quantity } = addToCartDto;
     const cartHashKey = this.getCartHashKey(userId);
+    const cartMetaKey = this.getCartMetaKey(userId);
     const redisClient = this.redisService.getClient();
-
     const lockKey = this.getLockKey(userId);
 
     try {
@@ -201,11 +246,58 @@ export class CartService {
         async () => {
           const productVariant = await this.productVariantRepository.findOne({
             where: { id: productVariantId },
-            relations: ["product"],
+            select: {
+              product: {
+                name: true,
+              },
+              id: true,
+              price: true,
+              title: true,
+              sku: true,
+              image: true,
+              variantOptions: {
+                value: true,
+                orderIndex: true,
+              },
+            },
+            relations: {
+              product: true,
+              variantOptions: true,
+            },
           });
 
           if (!productVariant) {
-            throw new NotFoundException(`Product variant not found`);
+            throw new NotFoundException(
+              `Product variant not found: ${productVariantId}`,
+            );
+          }
+
+          // Check if cart exists in Redis
+          const hasCart = await redisClient.exists(cartHashKey);
+          let cart: Cart;
+
+          if (!hasCart) {
+            // If cart doesn't exist, create a new one
+            cart = new Cart();
+            cart.id = this.snowflakeIdGenerator.generateId().toString();
+            cart.userId = userId;
+            cart.createdAt = new Date();
+            cart.updatedAt = new Date();
+
+            // Create cart metadata
+            const cartMeta = {
+              id: cart.id,
+              userId: cart.userId,
+              createdAt: cart.createdAt,
+              updatedAt: cart.updatedAt,
+            };
+
+            await redisClient.set(
+              cartMetaKey,
+              JSON.stringify(cartMeta),
+              "EX",
+              this.CART_TTL,
+            );
           }
 
           const existingItemJson = await redisClient.hget(
@@ -213,7 +305,6 @@ export class CartService {
             productVariantId,
           );
 
-          // Create or update cart item in Redis only
           let cartItem: Record<string, any>;
 
           if (existingItemJson && existingItemJson !== "empty") {
@@ -253,9 +344,8 @@ export class CartService {
 
           // Refresh TTL
           await redisClient.expire(cartHashKey, this.CART_TTL);
-          await redisClient.expire(this.getCartMetaKey(userId), this.CART_TTL);
+          await redisClient.expire(cartMetaKey, this.CART_TTL);
 
-          // Return updated cart from Redis
           return this.getOrCreateCart(userId);
         },
         3000,
@@ -496,37 +586,49 @@ export class CartService {
     try {
       const cart = await this.getOrCreateCart(userId);
 
-      // Create cart in database if it doesn't exist
-      let dbCart = await this.cartRepository.findOne({
-        where: { userId },
-      });
-
-      if (!dbCart) {
-        dbCart = this.cartRepository.create({
-          userId,
-          id: cart.id, // Use the ID from Redis
-        });
-        await this.cartRepository.save(dbCart);
-      }
-
-      // First remove any existing items
-      await this.cartItemRepository.delete({ cartId: dbCart.id });
-
-      // Add all current items from Redis
-      if (cart.cartItems && cart.cartItems.length > 0) {
-        for (const item of cart.cartItems) {
-          const cartItem = this.cartItemRepository.create({
-            id: item.id,
-            cartId: dbCart.id,
-            productVariantId: item.productVariantId,
-            quantity: item.quantity,
+      return await this.cartRepository.manager.transaction(
+        async (transactionalEntityManager) => {
+          let dbCart = await transactionalEntityManager.findOne(Cart, {
+            where: { userId },
           });
-          await this.cartItemRepository.save(cartItem);
-        }
-      }
 
-      this.logger.debug(`Persisted cart to database for user:${userId}`);
-      return dbCart;
+          if (!dbCart) {
+            dbCart = this.cartRepository.create({
+              userId,
+              id: cart.id,
+            });
+          }
+
+          await transactionalEntityManager.save(dbCart);
+
+          // First remove any existing items
+          await transactionalEntityManager.delete(CartItem, {
+            cartId: dbCart.id,
+          });
+
+          // Add all current items from Redis
+          if (cart.cartItems && cart.cartItems.length > 0) {
+            const cartItems = cart.cartItems.map((item) => {
+              return this.cartItemRepository.create({
+                id: item.id,
+                cartId: dbCart.id,
+                productVariantId: item.productVariantId,
+                quantity: item.quantity,
+              });
+            });
+
+            // Save all items in a single operation
+            if (cartItems.length > 0) {
+              await transactionalEntityManager.save(cartItems);
+            }
+          }
+
+          this.logger.debug(
+            `Persisted cart to database for user:${userId} using transaction`,
+          );
+          return dbCart;
+        },
+      );
     } catch (error) {
       this.logger.error(`Error persisting cart to database: ${error.message}`);
       throw error;

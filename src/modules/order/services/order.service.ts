@@ -130,91 +130,84 @@ export class OrderService {
     return this.lockService.withLock(
       `user:${userId}:order-creation`,
       async () => {
-        try {
-          let paymentUrl: string;
-          const selectedCartItemIds = placeOrderDto.items;
-          const cartItems = await this.cartService.getCartItemsByIds(
+        let paymentUrl: string;
+        const selectedCartItemIds = placeOrderDto.items;
+        const cartItems = await this.cartService.getCartItemsByIds(
+          userId,
+          selectedCartItemIds,
+        );
+
+        if (cartItems.length === 0) {
+          throw new BadRequestException(
+            "None of the selected items were found in your cart",
+          );
+        }
+
+        const { subtotal } =
+          this.cartService.calculateCartItemTotals(cartItems);
+
+        this.logger.log(
+          `Creating order for user ${userId} with ${cartItems.length} selected items`,
+        );
+
+        const order = await this.dataSource.transaction(async (manager) => {
+          let order = this.orderRepository.create({
             userId,
-            selectedCartItemIds,
+            totalAmount: subtotal,
+            orderStatus: OrderStatus.PENDING,
+            paymentStatus: PaymentStatus.PENDING,
+            shippingInfo: placeOrderDto.shippingInfo,
+            notes: placeOrderDto.notes,
+          });
+          order.generateId();
+
+          const orderItems = await this.createOrderItemsFromSelectedCart(
+            manager,
+            cartItems,
+            order,
+          );
+          order.orderItems = orderItems;
+
+          const transaction = await this.createPaymentTransaction(
+            order,
+            placeOrderDto.paymentInfo,
           );
 
-          if (cartItems.length === 0) {
-            throw new BadRequestException(
-              "None of the selected items were found in your cart",
+          // Generate payment URL if needed
+          if (
+            placeOrderDto.paymentInfo.paymentMethod === PaymentMethod.VNPAY &&
+            ipAddr
+          ) {
+            paymentUrl = await this.vnpayWrapperService.createPaymentUrl(
+              transaction,
+              ipAddr,
             );
           }
 
-          const { subtotal } =
-            this.cartService.calculateCartItemTotals(cartItems);
+          if (!order.paymentTransactions) {
+            order.paymentTransactions = [];
+          }
 
-          this.logger.log(
-            `Creating order for user ${userId} with ${cartItems.length} selected items`,
-          );
+          order.paymentTransactions.push(transaction);
 
-          const order = await this.dataSource.transaction(async (manager) => {
-            let order = this.orderRepository.create({
-              userId,
-              totalAmount: subtotal,
-              orderStatus: OrderStatus.PENDING,
-              paymentStatus: PaymentStatus.PENDING,
-              shippingInfo: placeOrderDto.shippingInfo,
-              billingInfo: placeOrderDto.billingInfo,
-            });
-            order.generateId();
+          await manager.save(order);
 
-            order = await this.createOrderItemsFromSelectedCart(
-              manager,
-              cartItems,
-              order,
-            );
+          return order;
+        });
 
-            const transaction = await this.createPaymentTransaction(
-              order,
-              placeOrderDto.paymentInfo,
-            );
+        await this.cartService.removeManyCartItemsWithLock(
+          userId,
+          selectedCartItemIds,
+        );
 
-            // Generate payment URL if needed
-            if (
-              placeOrderDto.paymentInfo.paymentMethod === PaymentMethod.VNPAY &&
-              ipAddr
-            ) {
-              paymentUrl = await this.vnpayWrapperService.createPaymentUrl(
-                transaction,
-                ipAddr,
-              );
-            }
+        await this.cartService.persistCartToDatabase(userId);
 
-            if (!order.paymentTransactions) {
-              order.paymentTransactions = [];
-            }
+        await this.redisService.cacheOrder(order.id, order);
 
-            order.paymentTransactions.push(transaction);
-
-            await manager.save(order);
-
-            return order;
-          });
-
-          await this.cartService.removeManyCartItemsWithLock(
-            userId,
-            selectedCartItemIds,
-          );
-
-          await this.cartService.persistCartToDatabase(userId);
-
-          await this.redisService.cacheOrder(order.id, order);
-
-          return {
-            ...order,
-            ...(paymentUrl ? { paymentUrl } : {}),
-          };
-        } catch (error) {
-          this.logger.error(
-            `Error creating order: ${error.message}`,
-            error.stack,
-          );
-          throw error;
-        }
+        return {
+          ...order,
+          ...(paymentUrl ? { paymentUrl } : {}),
+        };
       },
     );
   }
@@ -344,12 +337,14 @@ export class OrderService {
     manager: EntityManager,
     cartItems: CartItem[],
     order: Order,
-  ): Promise<Order> {
+  ): Promise<OrderItem[]> {
     const orderItems: OrderItem[] = [];
-
     for (const cartItem of cartItems) {
-      const productVariant = await this.productVariantRepository.findOne({
+      const productVariant = await manager.findOne(ProductVariant, {
         where: { id: cartItem.productVariantId },
+        lock: {
+          mode: "pessimistic_write",
+        },
       });
 
       if (!productVariant) {
@@ -377,8 +372,7 @@ export class OrderService {
       await manager.save(productVariant);
     }
 
-    order.orderItems = orderItems;
-    return order;
+    return orderItems;
   }
 
   private async createPaymentTransaction(

@@ -43,8 +43,8 @@ export class Order extends BaseEntity {
   @Column({ type: "jsonb", nullable: true, name: "shipping_info" })
   shippingInfo: Record<string, any>;
 
-  @Column({ type: "jsonb", nullable: true, name: "billing_info" })
-  billingInfo: Record<string, any>;
+  @Column({ type: "text", nullable: true })
+  notes: string;
 
   @OneToMany(() => OrderItem, (orderItem) => orderItem.order, {
     cascade: true,

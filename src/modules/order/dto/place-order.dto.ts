@@ -71,17 +71,6 @@ export class PlaceOrderDto {
   @Expose()
   shippingInfo: InfoDto;
 
-  @ApiProperty({
-    description: "Billing address information",
-    type: InfoDto,
-  })
-  @IsNotEmpty()
-  @IsObject()
-  @ValidateNested()
-  @Type(() => InfoDto)
-  @Expose()
-  billingInfo: InfoDto;
-
   // @ApiPropertyOptional({
   //   description: "Promotion code to apply to the order",
   //   type: ApplyPromotionDto,

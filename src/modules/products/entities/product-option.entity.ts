@@ -17,9 +17,6 @@ export class ProductOption extends BaseEntity {
   @Column({ length: 100, nullable: false })
   name: string;
 
-  @Column({ name: "order_index", type: "int" })
-  orderIndex: number;
-
   @OneToMany(
     () => ProductVariantOption,
     (variantOption) => variantOption.option,

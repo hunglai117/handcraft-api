@@ -15,4 +15,11 @@ export class ProductVariantOptionDto {
   })
   @Expose()
   value: string;
+
+  @ApiProperty({
+    description: "Order index of this option in the variant",
+    example: 1,
+  })
+  @Expose()
+  orderIndex: number;
 }

@@ -19,7 +19,7 @@ import { GetMenuCategoryResponseDto } from "./dto/get-menu-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 import { Category } from "./entities/category.entity";
 
-@ApiTags("Categories")
+@ApiTags("Categories-Admin")
 @Controller("categories")
 @ApiBearerAuth()
 @Roles(UserRole.ADMIN)
