@@ -41,6 +41,13 @@ export class OrderItemDto {
   orderId: string;
 
   @ApiProperty({
+    description: "Product variant ID",
+    example: "123456789",
+  })
+  @Expose()
+  productVariantId: string;
+
+  @ApiProperty({
     description: "Product variant",
     type: ProductVariantDto,
   })

@@ -1,17 +1,17 @@
-import { forwardRef, Module } from "@nestjs/common";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { PaymentTransaction } from "./entities/payment-transaction.entity";
-import { OrderModule } from "../order/order.module";
-import { VnpayModule } from "nestjs-vnpay";
+import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { VnpayModule } from "nestjs-vnpay";
 import { consoleLogger, EndpointConfig } from "vnpay";
-import { VnpayWrapperService } from "./services/vnpay-wrapper.service";
+import { SharedModule } from "../shared/shared.module";
 import { VnpayController } from "./controllers/vnpay.controller";
+import { PaymentTransaction } from "./entities/payment-transaction.entity";
+import { VnpayWrapperService } from "./services/vnpay-wrapper.service";
 
 @Module({
   imports: [
+    SharedModule,
     TypeOrmModule.forFeature([PaymentTransaction]),
-    forwardRef(() => OrderModule),
     VnpayModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

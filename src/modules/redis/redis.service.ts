@@ -56,19 +56,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return (await this.redisClient.exists(key)) === 1;
   }
 
-  async cacheOrder(
-    orderId: string,
-    orderData: any,
-    expireInSeconds = 3600,
-  ): Promise<void> {
-    await this.set(`order:${orderId}`, orderData, expireInSeconds);
-  }
+  // async cacheOrder(
+  //   orderId: string,
+  //   orderData: any,
+  //   expireInSeconds = 3600,
+  // ): Promise<void> {
+  //   await this.set(`order:${orderId}`, orderData, expireInSeconds);
+  // }
 
-  async getOrder<T>(orderId: string): Promise<T | null> {
-    return this.get<T>(`order:${orderId}`);
-  }
+  // async getOrder<T>(orderId: string): Promise<T | null> {
+  //   return this.get<T>(`order:${orderId}`);
+  // }
 
-  async invalidateOrder(orderId: string): Promise<void> {
-    await this.delete(`order:${orderId}`);
-  }
+  // async invalidateOrder(orderId: string): Promise<void> {
+  //   await this.delete(`order:${orderId}`);
+  // }
 }

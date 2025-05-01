@@ -9,10 +9,10 @@ import { OrderPromotion } from "./entities/order-promotion.entity";
 import { ProductVariant } from "../products/entities/product-variant.entity";
 import { CartModule } from "../cart/cart.module";
 import { RedisModule } from "../redis/redis.module";
-// import { OrderProcessor } from "./processors/order.processor";
-import { EventEmitterModule } from "@nestjs/event-emitter";
 import { PaymentModule } from "../payment/payment.module";
 import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
+import { SharedModule } from "../shared/shared.module";
+import { OrderProcessService } from "./services/order-process.service";
 
 @Module({
   imports: [
@@ -29,13 +29,10 @@ import { PaymentTransaction } from "../payment/entities/payment-transaction.enti
     RedisModule,
     CartModule,
     PaymentModule,
-    EventEmitterModule.forRoot(),
+    SharedModule,
   ],
   controllers: [OrderController],
-  providers: [
-    OrderService,
-    // OrderProcessor
-  ],
-  exports: [OrderService],
+  providers: [OrderService, OrderProcessService],
+  exports: [OrderService, OrderProcessService],
 })
 export class OrderModule {}

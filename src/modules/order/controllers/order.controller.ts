@@ -16,9 +16,8 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { plainToInstance } from "class-transformer";
-import { Roles } from "src/modules/auth/decorators/roles.decorator";
+// import { Roles } from "src/modules/auth/decorators/roles.decorator";
 import { CurrentUser } from "src/modules/auth/decorators/user.decorator";
-import { RolesGuard } from "src/modules/auth/guards/roles.guard";
 import { User, UserRole } from "src/modules/users/entities/user.entity";
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { PaginationQueryDto } from "../../shared/dtos/pagination.dto";
@@ -26,7 +25,7 @@ import { PaginatedOrderResponseDto } from "../dto/order-query.dto";
 import { OrderDto } from "../dto/order.dto";
 import { PlaceOrderDto } from "../dto/place-order.dto";
 import { OrderService } from "../services/order.service";
-import { UpdateOrderStatusRequestDto } from "../dto/update-order-status.dto";
+// import { UpdateOrderStatusRequestDto } from "../dto/update-order-status.dto";
 import { IpAddress } from "../../../common/decorators/ip-address.decorator";
 
 @ApiTags("Orders")
@@ -115,20 +114,19 @@ export class OrderController {
     return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
   }
 
-  @Put(":id/status")
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: "Update order status (Admin only)" })
-  @ApiResponse({
-    status: 200,
-    description: "Order status updated",
-    type: OrderDto,
-  })
-  async updateOrderStatus(
-    @Param("id") id: string,
-    @Body() body: UpdateOrderStatusRequestDto,
-  ): Promise<OrderDto> {
-    const order = await this.orderService.updateOrderStatus(id, body.status);
-    return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
-  }
+  // @Put(":id/status")
+  // @Roles(UserRole.ADMIN)
+  // @ApiOperation({ summary: "Update order status (Admin only)" })
+  // @ApiResponse({
+  //   status: 200,
+  //   description: "Order status updated",
+  //   type: OrderDto,
+  // })
+  // async updateOrderStatus(
+  //   @Param("id") id: string,
+  //   @Body() body: UpdateOrderStatusRequestDto,
+  // ): Promise<OrderDto> {
+  //   const order = await this.orderService.updateOrderStatus(id, body.status);
+  //   return plainToInstance(OrderDto, order, { excludeExtraneousValues: true });
+  // }
 }

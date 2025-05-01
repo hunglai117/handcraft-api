@@ -4,5 +4,13 @@
   "sourceRoot": "src",
   "compilerOptions": {
     "deleteOutDir": true
+  },
+  "projects": {
+    "order-processor": {
+      "entryFile": "scripts/order-processor.script"
+    },
+    "api": {
+      "entryFile": "scripts/api.script"
+    }
   }
 }

@@ -1,51 +1,27 @@
 import { Process, Processor } from "@nestjs/bull";
-import { Job } from "bull";
 import { Logger } from "@nestjs/common";
-import { OrderService } from "../services/order.service";
+import { Job } from "bull";
 import { OrderStatus } from "../entities/order-status.enum";
-import { EventEmitter2 } from "@nestjs/event-emitter";
+import { EOrderJob } from "../order.enum";
+import { OrderProcessService } from "../services/order-process.service";
 
 @Processor("orders")
 export class OrderProcessor {
   private readonly logger = new Logger(OrderProcessor.name);
 
-  constructor(
-    private orderService: OrderService,
-    private eventEmitter: EventEmitter2,
-  ) {}
+  constructor(private orderProcessService: OrderProcessService) {}
 
-  @Process("process-order")
-  async processOrder(job: Job<{ orderId: string }>): Promise<void> {
-    const { orderId } = job.data;
-    this.logger.log(`Processing order ${orderId}`);
+  @Process(EOrderJob.UPDATE_COMPLETE_STATUS)
+  async updateCompletePaymentStatus(
+    job: Job<{
+      orderId: string;
+      paymentDetails: Record<string, any>;
+    }>,
+  ): Promise<void> {
+    this.logger.log(
+      `Updating payment status for order ${job.data.orderId} to ${OrderStatus.PAID}`,
+    );
 
-    try {
-      // 1. Get the order
-      const order = await this.orderService.findOne(orderId);
-
-      // 2. Verify inventory (double-check)
-      // Note: This was already checked during order placement but we double-check
-      // in case of concurrent orders
-
-      // 3. Update order status to PROCESSING
-      order.orderStatus = OrderStatus.PROCESSING;
-
-      // 4. Emit event for other services
-      this.eventEmitter.emit("order.processed", {
-        orderId: order.id,
-        userId: order.userId,
-        orderItems: order.orderItems,
-        totalAmount: order.totalAmount,
-      });
-
-      // 5. Log completion
-      this.logger.log(`Order ${orderId} processed successfully`);
-    } catch (error) {
-      this.logger.error(
-        `Error processing order ${orderId}: ${error.message}`,
-        error.stack,
-      );
-      throw error; // Allow Bull to retry based on the job configuration
-    }
+    await this.orderProcessService.handleUpdateCompletePayment(job.data);
   }
 }
