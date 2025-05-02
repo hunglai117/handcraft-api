@@ -179,6 +179,19 @@ export class ProductsService {
 
     let queryBuilder = this.productRepository
       .createQueryBuilder("product")
+      .select([
+        "product.id",
+        "product.name",
+        "product.slug",
+        "product.category_id",
+        "product.currency",
+        "product.images",
+        "product.featuredImage",
+        "product.priceMin",
+        "product.priceMax",
+        "product.inStock",
+        "product.createdAt",
+      ])
       .leftJoinAndSelect("product.category", "category")
       .leftJoinAndSelect("product.options", "options")
       .leftJoinAndSelect("product.variants", "variants")

@@ -10,16 +10,16 @@ import {
 } from "class-validator";
 import { PaymentInfoDto } from "./payment-info.dto";
 
-// export class ApplyPromotionDto {
-//   @ApiProperty({
-//     description: "Promotion code to apply",
-//     example: "SUMMER20",
-//   })
-//   @IsString()
-//   @IsNotEmpty()
-//   @Expose()
-//   code: string;
-// }
+export class ApplyPromotionDto {
+  @ApiProperty({
+    description: "Promotion code to apply",
+    example: "SUMMER20",
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Expose()
+  code: string;
+}
 
 export class InfoDto {
   @ApiProperty({
@@ -71,15 +71,15 @@ export class PlaceOrderDto {
   @Expose()
   shippingInfo: InfoDto;
 
-  // @ApiPropertyOptional({
-  //   description: "Promotion code to apply to the order",
-  //   type: ApplyPromotionDto,
-  // })
-  // @IsOptional()
-  // @ValidateNested()
-  // @Type(() => ApplyPromotionDto)
-  // @Expose()
-  // promotion?: ApplyPromotionDto;
+  @ApiPropertyOptional({
+    description: "Promotion code to apply to the order",
+    type: ApplyPromotionDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ApplyPromotionDto)
+  @Expose()
+  promotion?: ApplyPromotionDto;
 
   @ApiProperty({
     description: "Payment information",

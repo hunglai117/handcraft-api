@@ -8,7 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, EntityManager, Repository } from "typeorm";
 import { OrderItem } from "../entities/order-item.entity";
 import { Order } from "../entities/order.entity";
-// import { OrderPromotion } from "../entities/order-promotion.entity";
+import { OrderPromotion } from "../entities/order-promotion.entity";
 import { plainToInstance } from "class-transformer";
 import { CartItem } from "src/modules/cart/entities/cart-item.entity";
 import { PaymentTransaction } from "src/modules/payment/entities/payment-transaction.entity";
@@ -25,6 +25,9 @@ import { PaginatedOrderResponseDto } from "../dto/order-query.dto";
 import { PaymentInfoDto } from "../dto/payment-info.dto";
 import { PlaceOrderDto } from "../dto/place-order.dto";
 import { OrderStatus } from "../entities/order-status.enum";
+import { PromotionsService } from "../../promotions/promotions.service";
+import { Promotion } from "../../promotions/entities/promotion.entity";
+import { PromotionType } from "../../promotions/entities/promotion.entity";
 
 @Injectable()
 export class OrderService {
@@ -35,8 +38,8 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
-    // @InjectRepository(OrderPromotion)
-    // private orderPromotionRepository: Repository<OrderPromotion>,
+    @InjectRepository(OrderPromotion)
+    private orderPromotionRepository: Repository<OrderPromotion>,
     @InjectRepository(ProductVariant)
     private productVariantRepository: Repository<ProductVariant>,
     @InjectRepository(PaymentTransaction)
@@ -46,6 +49,7 @@ export class OrderService {
     private redisService: RedisService,
     private lockService: RedisLockService,
     private vnpayWrapperService: VnpayWrapperService,
+    private promotionsService: PromotionsService,
   ) {}
 
   async findAllForUser(
@@ -164,6 +168,35 @@ export class OrderService {
           );
           order.orderItems = orderItems;
 
+          // Apply promotion if provided
+          if (placeOrderDto.promotion?.code) {
+            try {
+              const promotionCode = placeOrderDto.promotion.code;
+              this.logger.log(
+                `Applying promotion code ${promotionCode} to order`,
+              );
+
+              const orderPromotion = await this.applyPromotion(
+                manager,
+                order,
+                promotionCode,
+              );
+
+              if (orderPromotion) {
+                if (!order.orderPromotions) {
+                  order.orderPromotions = [];
+                }
+                order.orderPromotions.push(orderPromotion);
+                this.logger.log(
+                  `Applied promotion ${promotionCode} with discount ${orderPromotion.discountAmount}`,
+                );
+              }
+            } catch (error) {
+              this.logger.error(`Failed to apply promotion: ${error.message}`);
+              throw error;
+            }
+          }
+
           const transaction = await this.createPaymentTransaction(
             order,
             placeOrderDto.paymentInfo,
@@ -198,8 +231,6 @@ export class OrderService {
 
         await this.cartService.persistCartToDatabase(userId);
 
-        // await this.redisService.cacheOrder(order.id, order);
-
         return {
           ...order,
           ...(paymentUrl ? { paymentUrl } : {}),
@@ -233,6 +264,7 @@ export class OrderService {
       }
 
       productVariant.stockQuantity -= cartItem.quantity;
+      productVariant.purchaseCount += cartItem.quantity;
 
       const orderItem = this.orderItemRepository.create({
         orderId: order.id,
@@ -300,9 +332,6 @@ export class OrderService {
           }
         });
 
-        // Invalidate cache
-        // await this.redisService.invalidateOrder(id);
-
         return order;
       } catch (error) {
         this.logger.error(
@@ -314,25 +343,100 @@ export class OrderService {
     });
   }
 
-  // async updateOrderStatus(id: string, status: OrderStatus): Promise<Order> {
-  //   return this.lockService.withLock(`order:${id}:status`, async () => {
-  //     const order = await this.orderItemRepository.findOne({
-  //       where: { id },
-  //       relations: ["orderItems", "paymentTransactions"],
-  //     });
-  //     const oldStatus = order.orderStatus;
-  //     order.orderStatus = status;
+  /**
+   * Calculate the discount amount based on promotion type
+   */
+  private calculatePromotionDiscount(
+    promotion: Promotion,
+    orderAmount: number,
+  ): number {
+    switch (promotion.type) {
+      case PromotionType.PERCENTAGE_DISCOUNT:
+        // Calculate percentage discount (e.g. 20% of order total)
+        return (orderAmount * Number(promotion.discountValue)) / 100;
 
-  //     // Save new status
-  //     await this.orderRepository.save(order);
+      case PromotionType.FIXED_AMOUNT_DISCOUNT:
+        // Fixed amount discount (e.g. $50 off)
+        // Make sure the discount doesn't exceed the order amount
+        return Math.min(Number(promotion.discountValue), orderAmount);
 
-  //     // Invalidate cache
-  //     await this.redisService.invalidateOrder(id);
+      case PromotionType.FREE_SHIPPING:
+        // For simplicity, assume a flat shipping rate discount
+        // This could be replaced with actual shipping calculation
+        return 0; // Shipping cost would be handled separately
 
-  //     // Handle status change side effects
-  //     if (oldStatus !== status) {
-  //       await this.handleOrderStatusChange(order, oldStatus, status);
-  //     }
-  //   });
-  // }
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Apply a promotion to an order and create the OrderPromotion record
+   */
+  private async applyPromotion(
+    manager: EntityManager,
+    order: Order,
+    promotionCode: string,
+  ): Promise<OrderPromotion | null> {
+    try {
+      // Validate the promotion
+      const validationResult =
+        await this.promotionsService.validatePromoCode(promotionCode);
+
+      if (!validationResult.valid || !validationResult.promotion) {
+        throw new BadRequestException(
+          validationResult.message || "Invalid promotion code",
+        );
+      }
+
+      const promotion = validationResult.promotion;
+
+      // Check minimum order amount if specified
+      if (
+        promotion.minimumOrderAmount &&
+        order.totalAmount < Number(promotion.minimumOrderAmount)
+      ) {
+        throw new BadRequestException(
+          `This promotion requires a minimum order amount of ${promotion.minimumOrderAmount}`,
+        );
+      }
+
+      // Calculate the discount
+      const discountAmount = this.calculatePromotionDiscount(
+        promotion,
+        order.totalAmount,
+      );
+
+      if (discountAmount <= 0) {
+        return null;
+      }
+
+      // Create the order promotion record
+      const orderPromotion = this.orderPromotionRepository.create({
+        orderId: order.id,
+        promotionId: promotion.id,
+        discountAmount,
+      });
+      orderPromotion.generateId();
+
+      // Save the order promotion
+      await manager.save(orderPromotion);
+
+      // Apply the discount to the order total
+      order.totalAmount = Math.max(0, order.totalAmount - discountAmount);
+      await manager.save(order);
+
+      // Increment the usage count of the promotion
+      promotion.usageCount = (promotion.usageCount || 0) + 1;
+      await manager.save(promotion);
+
+      return orderPromotion;
+    } catch (error) {
+      this.logger.error(
+        `Error applying promotion: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }

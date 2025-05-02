@@ -30,10 +30,11 @@ import { UpdatePromotionDto } from "./dto/update-promotion.dto";
 import { ValidateCodePromotionResponseDto } from "./dto/validate-code.dto";
 import { PromotionsService } from "./promotions.service";
 
-@ApiTags("Promotions")
+@ApiTags("Promotions-Admin")
 @Controller("promotions")
 @ApiBearerAuth()
-export class PromotionsController {
+@Roles(UserRole.ADMIN)
+export class AdminPromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
   @Post()
@@ -48,34 +49,11 @@ export class PromotionsController {
     description: "Invalid input data.",
     type: BadRequestResponseDto,
   })
-  @Roles(UserRole.ADMIN)
   async create(
     @Body() createPromotionDto: CreatePromotionDto,
   ): Promise<PromotionDto> {
     const promotion = await this.promotionsService.create(createPromotionDto);
     return plainToInstance(PromotionDto, promotion, {
-      excludeExtraneousValues: true,
-    });
-  }
-
-  @Get("validate/:code")
-  @ApiOperation({ summary: "Validate a promotion code" })
-  @ApiParam({
-    name: "code",
-    description: "Promotion code to validate",
-    type: String,
-    example: "SUMMER20",
-  })
-  @ApiResponse({
-    status: 200,
-    description: "Validation result for the promotion code.",
-    type: ValidateCodePromotionResponseDto,
-  })
-  async validateCode(
-    @Param("code") code: string,
-  ): Promise<ValidateCodePromotionResponseDto> {
-    const resp = await this.promotionsService.validatePromoCode(code);
-    return plainToInstance(ValidateCodePromotionResponseDto, resp, {
       excludeExtraneousValues: true,
     });
   }
@@ -102,7 +80,6 @@ export class PromotionsController {
     description: "Invalid input data.",
     type: BadRequestResponseDto,
   })
-  @Roles(UserRole.ADMIN)
   async update(
     @Param("id") id: string,
     @Body() updatePromotionDto: UpdatePromotionDto,
@@ -134,7 +111,6 @@ export class PromotionsController {
     description: "Promotion not found.",
     type: NotFoundResponseDto,
   })
-  @Roles(UserRole.ADMIN)
   async remove(@Param("id") id: string): Promise<void> {
     return this.promotionsService.remove(id);
   }
@@ -157,10 +133,53 @@ export class PromotionsController {
     description: "Promotion not found.",
     type: NotFoundResponseDto,
   })
-  @Roles(UserRole.ADMIN)
   async toggleActive(@Param("id") id: string): Promise<PromotionDto> {
     const promotion = await this.promotionsService.toggleActive(id);
     return plainToInstance(PromotionDto, promotion, {
+      excludeExtraneousValues: true,
+    });
+  }
+}
+
+@ApiTags("Promotions")
+@Controller("promotions")
+@ApiBearerAuth()
+export class PromotionsController {
+  constructor(private readonly promotionsService: PromotionsService) {}
+
+  @Get("active")
+  @ApiOperation({ summary: "Get all active promotions with available usage" })
+  @ApiResponse({
+    status: 200,
+    description: "Returns all active promotions with available usage limit",
+    type: [PromotionDto],
+  })
+  async getActivePromotions(): Promise<PromotionDto[]> {
+    const promotions =
+      await this.promotionsService.findActivePromotionsWithAvailableUsage();
+    return plainToInstance(PromotionDto, promotions, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Get("validate/:code")
+  @ApiOperation({ summary: "Validate a promotion code" })
+  @ApiParam({
+    name: "code",
+    description: "Promotion code to validate",
+    type: String,
+    example: "SUMMER20",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Validation result for the promotion code.",
+    type: ValidateCodePromotionResponseDto,
+  })
+  async validateCode(
+    @Param("code") code: string,
+  ): Promise<ValidateCodePromotionResponseDto> {
+    const resp = await this.promotionsService.validatePromoCode(code);
+    return plainToInstance(ValidateCodePromotionResponseDto, resp, {
       excludeExtraneousValues: true,
     });
   }

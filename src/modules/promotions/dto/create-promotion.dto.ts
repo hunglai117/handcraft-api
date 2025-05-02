@@ -10,6 +10,8 @@ import {
   IsString,
   MaxLength,
   Min,
+  Validate,
+  ValidateIf,
 } from "class-validator";
 import { PromotionType } from "../entities/promotion.entity";
 
@@ -70,7 +72,7 @@ export class CreatePromotionDto {
   @Type(() => Date)
   @IsOptional()
   @Expose()
-  startDate?: Date;
+  startDate: Date;
 
   @ApiProperty({
     description: "Promotion end date",
@@ -80,6 +82,13 @@ export class CreatePromotionDto {
   @Type(() => Date)
   @IsNotEmpty()
   @Expose()
+  @ValidateIf((o) => o.startDate != null)
+  @Validate((o: CreatePromotionDto, value: Date) => {
+    if (o.startDate && value <= o.startDate) {
+      throw new Error("End date must be after start date");
+    }
+    return true;
+  })
   endDate: Date;
 
   @ApiPropertyOptional({

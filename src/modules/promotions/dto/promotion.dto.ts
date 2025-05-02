@@ -76,11 +76,11 @@ export class PromotionDto {
   usageLimit: number;
 
   @ApiPropertyOptional({
-    description: "Maximum number of times a user can use this promotion",
-    example: 1,
+    description: "Current usage count of the promotion",
+    example: 150,
   })
   @Expose()
-  usageLimitPerUser: number;
+  usageCount: number;
 
   @ApiProperty({
     description: "Indicates if the promotion is active",

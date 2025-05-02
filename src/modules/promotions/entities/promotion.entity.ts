@@ -55,13 +55,15 @@ export class Promotion extends BaseEntity {
   @Column({
     type: "timestamp",
     name: "end_date",
-    nullable: true,
   })
   endDate: Date;
 
   @Column({ default: true, name: "is_active" })
   isActive: boolean;
 
-  @Column({ nullable: true, name: "usage_limit" })
+  @Column({ name: "usage_limit" })
   usageLimit: number;
+
+  @Column({ default: 0, name: "usage_count" })
+  usageCount: number;
 }

@@ -183,4 +183,29 @@ export class PublicProductsController {
       excludeExtraneousValues: true,
     });
   }
+
+  @Get(":id")
+  @ApiOperation({ summary: "Get a product by ID" })
+  @ApiParam({
+    name: "id",
+    description: "Product ID",
+    type: String,
+    example: "5202676564361216",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Return the product.",
+    type: ProductDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Product not found.",
+    type: NotFoundResponseDto,
+  })
+  async findOne(@Param("id") id: string): Promise<ProductDto> {
+    const product = await this.productsService.findOne(id);
+    return plainToInstance(ProductDto, product, {
+      excludeExtraneousValues: true,
+    });
+  }
 }

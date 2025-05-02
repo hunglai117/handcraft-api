@@ -100,7 +100,11 @@ export class PromotionsService {
       const promotion = await this.findByCode(code);
       const now = new Date();
 
-      if (!promotion.isActive) {
+      if (
+        !promotion.isActive ||
+        promotion.startDate > now ||
+        (promotion.endDate && promotion.endDate < now)
+      ) {
         return { valid: false, message: "Promotion is not active" };
       }
 
@@ -112,11 +116,21 @@ export class PromotionsService {
         return { valid: false, message: "Promotion has expired" };
       }
 
-      // Additional validation could be added here for usage limits, etc.
-
       return { valid: true, promotion };
     } catch {
       return { valid: false, message: "Invalid promotion code" };
     }
+  }
+
+  async findActivePromotionsWithAvailableUsage(): Promise<Promotion[]> {
+    const now = new Date();
+
+    return this.promotionRepository
+      .createQueryBuilder("promotion")
+      .where("promotion.isActive = :isActive", { isActive: true })
+      .andWhere("promotion.usageCount <= promotion.usageLimit))")
+      .andWhere("promotion.startDate <= :now", { now })
+      .andWhere("promotion.endDate > :now", { now })
+      .getMany();
   }
 }

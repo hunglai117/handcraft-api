@@ -13,6 +13,7 @@ import { PaymentModule } from "../payment/payment.module";
 import { PaymentTransaction } from "../payment/entities/payment-transaction.entity";
 import { SharedModule } from "../shared/shared.module";
 import { OrderProcessService } from "./services/order-process.service";
+import { PromotionsModule } from "../promotions/promotions.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { OrderProcessService } from "./services/order-process.service";
     CartModule,
     PaymentModule,
     SharedModule,
+    PromotionsModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, OrderProcessService],
