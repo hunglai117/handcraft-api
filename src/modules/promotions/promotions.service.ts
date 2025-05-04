@@ -122,15 +122,20 @@ export class PromotionsService {
     }
   }
 
-  async findActivePromotionsWithAvailableUsage(): Promise<Promotion[]> {
+  async findActivePromotionsWithAvailableUsage(): Promise<{
+    promotions: Promotion[];
+    count: number;
+  }> {
     const now = new Date();
 
-    return this.promotionRepository
+    const [promotions, count] = await this.promotionRepository
       .createQueryBuilder("promotion")
       .where("promotion.isActive = :isActive", { isActive: true })
-      .andWhere("promotion.usageCount <= promotion.usageLimit))")
+      .andWhere("promotion.usageCount <= promotion.usageLimit")
       .andWhere("promotion.startDate <= :now", { now })
       .andWhere("promotion.endDate > :now", { now })
-      .getMany();
+      .getManyAndCount();
+
+    return { promotions, count };
   }
 }

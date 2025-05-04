@@ -28,6 +28,7 @@ import { OrderStatus } from "../entities/order-status.enum";
 import { PromotionsService } from "../../promotions/promotions.service";
 import { Promotion } from "../../promotions/entities/promotion.entity";
 import { PromotionType } from "../../promotions/entities/promotion.entity";
+import { Product } from "src/modules/products/entities/product.entity";
 
 @Injectable()
 export class OrderService {
@@ -258,18 +259,9 @@ export class OrderService {
         throw new NotFoundException(`Product variant not found`);
       }
 
-      const product = await manager
-        .createQueryBuilder()
-        .select("product")
-        .from(
-          productVariant.constructor.name === "ProductVariant"
-            ? productVariant.constructor
-            : manager.getRepository(ProductVariant).metadata.target,
-          "product",
-        )
-        .where("product.id = :id", { id: productVariant.id })
-        .leftJoinAndSelect("product.product", "parentProduct")
-        .getOne();
+      const product = await manager.findOne(Product, {
+        where: { id: productVariant.productId },
+      });
 
       if (productVariant.stockQuantity < cartItem.quantity) {
         throw new BadRequestException(
@@ -280,9 +272,9 @@ export class OrderService {
       productVariant.stockQuantity -= cartItem.quantity;
 
       // Update purchase count on the product
-      if (product && product.product) {
-        product.product.purchaseCount += cartItem.quantity;
-        await manager.save(product.product);
+      if (product) {
+        product.purchaseCount += cartItem.quantity;
+        await manager.save(product);
       }
 
       const orderItem = this.orderItemRepository.create({

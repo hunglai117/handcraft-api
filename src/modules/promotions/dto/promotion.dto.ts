@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Expose } from "class-transformer";
+import { Expose, Type } from "class-transformer";
 import { PromotionType } from "../entities/promotion.entity";
 
 export class PromotionDto {
@@ -102,4 +102,21 @@ export class PromotionDto {
   })
   @Expose()
   updatedAt: Date;
+}
+
+export class PromotionListDto {
+  @ApiProperty({
+    description: "List of promotions",
+    type: [PromotionDto],
+  })
+  @Expose()
+  @Type(() => PromotionDto)
+  promotions: PromotionDto[];
+
+  @ApiProperty({
+    description: "Total number of promotions",
+    example: 100,
+  })
+  @Expose()
+  count: number;
 }

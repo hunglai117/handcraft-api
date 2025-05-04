@@ -25,7 +25,7 @@ import {
 } from "../shared/shared.dto";
 import { UserRole } from "../users/entities/user.entity";
 import { CreatePromotionDto } from "./dto/create-promotion.dto";
-import { PromotionDto } from "./dto/promotion.dto";
+import { PromotionDto, PromotionListDto } from "./dto/promotion.dto";
 import { UpdatePromotionDto } from "./dto/update-promotion.dto";
 import { ValidateCodePromotionResponseDto } from "./dto/validate-code.dto";
 import { PromotionsService } from "./promotions.service";
@@ -154,10 +154,10 @@ export class PromotionsController {
     description: "Returns all active promotions with available usage limit",
     type: [PromotionDto],
   })
-  async getActivePromotions(): Promise<PromotionDto[]> {
+  async getActivePromotions(): Promise<PromotionListDto> {
     const promotions =
       await this.promotionsService.findActivePromotionsWithAvailableUsage();
-    return plainToInstance(PromotionDto, promotions, {
+    return plainToInstance(PromotionListDto, promotions, {
       excludeExtraneousValues: true,
     });
   }
