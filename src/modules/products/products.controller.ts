@@ -26,7 +26,7 @@ import { NotFoundResponseDto } from "../shared/shared.dto";
 import { UserRole } from "../users/entities/user.entity";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { CreateSimpleProductDto } from "./dto/create-simple-product.dto";
-import { ProductByIdsQueryDto } from "./dto/product-by-ids-query.dto";
+import { ProductByIdsQueryDto } from "./dto/product-by-ids.dto";
 import {
   PaginatedProductResponseDto,
   ProductQueryDto,

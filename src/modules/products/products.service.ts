@@ -369,7 +369,20 @@ export class ProductsService {
     }
 
     const products = await this.productRepository.find({
-      where: { id: In(productIds) },
+      where: { id: In(productIds), inStock: true },
+      select: [
+        "id",
+        "name",
+        "slug",
+        "currency",
+        "images",
+        "featuredImage",
+        "priceMin",
+        "priceMax",
+        "purchaseCount",
+        "rating",
+        "createdAt",
+      ],
       relations: ["category", "options", "variants", "variants.variantOptions"],
     });
 
