@@ -17,6 +17,7 @@ import {
   ApiParam,
   ApiResponse,
   ApiTags,
+  getSchemaPath,
 } from "@nestjs/swagger";
 import { plainToInstance } from "class-transformer";
 import { Public } from "../auth/decorators/public.decorator";
@@ -25,6 +26,7 @@ import { NotFoundResponseDto } from "../shared/shared.dto";
 import { UserRole } from "../users/entities/user.entity";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { CreateSimpleProductDto } from "./dto/create-simple-product.dto";
+import { ProductByIdsQueryDto } from "./dto/product-by-ids-query.dto";
 import {
   PaginatedProductResponseDto,
   ProductQueryDto,
@@ -157,6 +159,38 @@ export class PublicProductsController {
     return plainToInstance(PaginatedProductResponseDto, products, {
       excludeExtraneousValues: true,
     });
+  }
+
+  @Get("by-ids")
+  @ApiOperation({ summary: "Get multiple products by their IDs" })
+  @ApiResponse({
+    status: 200,
+    description:
+      "Return a map of products keyed by ID. Value is null if product not found.",
+    schema: {
+      type: "object",
+      additionalProperties: {
+        oneOf: [{ $ref: getSchemaPath(ProductDto) }, { type: "null" }],
+      },
+    },
+  })
+  async findByIds(
+    @Query() query: ProductByIdsQueryDto,
+  ): Promise<Record<string, ProductDto | null>> {
+    const productMap = await this.productsService.findByIds(query.productIds);
+    const result: Record<string, ProductDto | null> = {};
+
+    for (const id in productMap) {
+      if (productMap.hasOwnProperty(id)) {
+        const product = productMap[id];
+        result[id] = product
+          ? plainToInstance(ProductDto, product, {
+              excludeExtraneousValues: true,
+            })
+          : null;
+      }
+    }
+    return result;
   }
 
   @Get("slug/:slug")

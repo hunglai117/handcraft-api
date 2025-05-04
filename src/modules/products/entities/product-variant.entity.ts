@@ -38,7 +38,4 @@ export class ProductVariant extends BaseEntity {
     { cascade: true },
   )
   variantOptions: ProductVariantOption[];
-
-  @Column({ default: 0, name: "purchase_count" })
-  purchaseCount: number;
 }

@@ -248,6 +248,7 @@ export class OrderService {
     for (const cartItem of cartItems) {
       const productVariant = await manager.findOne(ProductVariant, {
         where: { id: cartItem.productVariantId },
+        relations: ["product"],
         lock: {
           mode: "pessimistic_write",
         },
@@ -264,7 +265,12 @@ export class OrderService {
       }
 
       productVariant.stockQuantity -= cartItem.quantity;
-      productVariant.purchaseCount += cartItem.quantity;
+
+      // Update purchase count on the product instead of the variant
+      if (productVariant.product) {
+        productVariant.product.purchaseCount += cartItem.quantity;
+        await manager.save(productVariant.product);
+      }
 
       const orderItem = this.orderItemRepository.create({
         orderId: order.id,

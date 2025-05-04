@@ -59,4 +59,10 @@ export class Product extends BaseEntity {
 
   @OneToMany(() => ProductOption, (option) => option.product, { cascade: true })
   options: ProductOption[];
+
+  @Column({ default: 0, name: "purchase_count" })
+  purchaseCount: number;
+
+  @Column({ default: 0 })
+  rating: number;
 }

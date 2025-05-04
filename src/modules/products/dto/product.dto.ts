@@ -62,12 +62,12 @@ export class ProductDto {
   @Expose()
   images?: string[];
 
-  @ApiProperty({
-    description: "Whether the product has price variations",
-    example: true,
+  @ApiPropertyOptional({
+    description: "Product thumbnail image",
+    example: "https://example.com/images/bowl_thumbnail.jpg",
   })
   @Expose()
-  priceVaries: boolean;
+  featuredImage?: string;
 
   @ApiProperty({
     description: "Minimum price across all variants",
@@ -82,6 +82,22 @@ export class ProductDto {
   })
   @Expose()
   priceMax: number;
+
+  @ApiProperty({
+    description: "Number of times the product has been purchased",
+    example: 120,
+    default: 0,
+  })
+  @Expose()
+  purchaseCount: number;
+
+  @ApiProperty({
+    description: "Product rating (0-5)",
+    example: 4,
+    default: 0,
+  })
+  @Expose()
+  rating: number;
 
   @ApiPropertyOptional({
     description: "Product variants",
@@ -103,11 +119,11 @@ export class ProductDto {
     description: "Created date and time",
   })
   @Expose()
-  createdAt: Date;
+  createdAt?: Date;
 
   @ApiProperty({
     description: "Last updated date and time",
   })
   @Expose()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository, SelectQueryBuilder } from "typeorm";
+import { DataSource, Repository, SelectQueryBuilder, In } from "typeorm";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { ESortBy, ProductQueryDto } from "./dto/product-query.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
@@ -190,6 +190,8 @@ export class ProductsService {
         "product.priceMin",
         "product.priceMax",
         "product.inStock",
+        "product.purchaseCount",
+        "product.rating",
         "product.createdAt",
       ])
       .leftJoinAndSelect("product.category", "category")
@@ -282,6 +284,14 @@ export class ProductsService {
       case ESortBy.PRICE_DESC:
         queryBuilder.orderBy("product.price_max", "DESC");
         break;
+      case ESortBy.POPULARITY:
+        // Sort by rating (descending)
+        queryBuilder.orderBy("product.rating", "DESC");
+        break;
+      case ESortBy.TOP_SELLER:
+        // Sort by purchase count (descending)
+        queryBuilder.orderBy("product.purchase_count", "DESC");
+        break;
       default:
         queryBuilder.orderBy("product.createdAt", "DESC");
         break;
@@ -292,6 +302,23 @@ export class ProductsService {
   async findOne(id: string): Promise<Product> {
     const product = await this.productRepository
       .createQueryBuilder("product")
+      .select([
+        "product.id",
+        "product.name",
+        "product.slug",
+        "product.description",
+        "product.category_id",
+        "product.currency",
+        "product.images",
+        "product.featuredImage",
+        "product.priceMin",
+        "product.priceMax",
+        "product.inStock",
+        "product.purchaseCount",
+        "product.rating",
+        "product.createdAt",
+        "product.updatedAt",
+      ])
       .leftJoinAndSelect("product.category", "category")
       .leftJoinAndSelect("product.options", "options")
       .leftJoinAndSelect("product.variants", "variants")
@@ -325,6 +352,36 @@ export class ProductsService {
     }
 
     return product;
+  }
+
+  async findByIds(
+    productIds: string[],
+  ): Promise<Record<string, Product | null>> {
+    const result: Record<string, Product | null> = {};
+
+    // Initialize result map with null for all requested IDs
+    for (const id of productIds) {
+      result[id] = null;
+    }
+
+    if (!productIds || productIds.length === 0) {
+      return result; // Return the map with all nulls if no IDs provided
+    }
+
+    const products = await this.productRepository.find({
+      where: { id: In(productIds) },
+      relations: ["category", "options", "variants", "variants.variantOptions"],
+    });
+
+    // Populate the result map with found products
+    for (const product of products) {
+      if (result.hasOwnProperty(product.id)) {
+        // Check if the ID was requested
+        result[product.id] = product;
+      }
+    }
+
+    return result;
   }
 
   async update(

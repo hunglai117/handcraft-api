@@ -6,6 +6,7 @@ export enum OrderStatus {
   ON_HOLD = "on_hold", // Order placed on hold (inventory/fraud check issues)
   SHIPPED = "shipped", // Order handed to shipping provider
   OUT_FOR_DELIVERY = "out_for_delivery", // Order is with delivery agent
+  DELIVERED = "delivered", // Order delivered to customer
   COMPLETED = "completed", // Order fully completed including post-delivery processes
   CANCELLED = "cancelled", // Order cancelled
   REFUND_REQUESTED = "refund_requested", // Customer requested a refund
