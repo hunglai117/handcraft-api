@@ -246,9 +246,9 @@ export class OrderService {
   ): Promise<OrderItem[]> {
     const orderItems: OrderItem[] = [];
     for (const cartItem of cartItems) {
+      // First get the variant with a pessimistic lock (without relations)
       const productVariant = await manager.findOne(ProductVariant, {
         where: { id: cartItem.productVariantId },
-        relations: ["product"],
         lock: {
           mode: "pessimistic_write",
         },
@@ -258,6 +258,19 @@ export class OrderService {
         throw new NotFoundException(`Product variant not found`);
       }
 
+      const product = await manager
+        .createQueryBuilder()
+        .select("product")
+        .from(
+          productVariant.constructor.name === "ProductVariant"
+            ? productVariant.constructor
+            : manager.getRepository(ProductVariant).metadata.target,
+          "product",
+        )
+        .where("product.id = :id", { id: productVariant.id })
+        .leftJoinAndSelect("product.product", "parentProduct")
+        .getOne();
+
       if (productVariant.stockQuantity < cartItem.quantity) {
         throw new BadRequestException(
           `Insufficient stock for ${productVariant.title}. Only ${productVariant.stockQuantity} available.`,
@@ -266,10 +279,10 @@ export class OrderService {
 
       productVariant.stockQuantity -= cartItem.quantity;
 
-      // Update purchase count on the product instead of the variant
-      if (productVariant.product) {
-        productVariant.product.purchaseCount += cartItem.quantity;
-        await manager.save(productVariant.product);
+      // Update purchase count on the product
+      if (product && product.product) {
+        product.product.purchaseCount += cartItem.quantity;
+        await manager.save(product.product);
       }
 
       const orderItem = this.orderItemRepository.create({

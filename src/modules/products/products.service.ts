@@ -279,10 +279,10 @@ export class ProductsService {
         queryBuilder.orderBy("product.createdAt", "DESC");
         break;
       case ESortBy.PRICE_ASC:
-        queryBuilder.orderBy("product.price_min", "ASC");
+        queryBuilder.orderBy("product.priceMin", "ASC");
         break;
       case ESortBy.PRICE_DESC:
-        queryBuilder.orderBy("product.price_max", "DESC");
+        queryBuilder.orderBy("product.priceMax", "DESC");
         break;
       case ESortBy.POPULARITY:
         // Sort by rating (descending)
@@ -290,7 +290,7 @@ export class ProductsService {
         break;
       case ESortBy.TOP_SELLER:
         // Sort by purchase count (descending)
-        queryBuilder.orderBy("product.purchase_count", "DESC");
+        queryBuilder.orderBy("product.purchaseCount", "DESC");
         break;
       default:
         queryBuilder.orderBy("product.createdAt", "DESC");

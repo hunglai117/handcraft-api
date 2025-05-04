@@ -4,6 +4,7 @@ import { Expose, Type } from "class-transformer";
 import { OrderItemDto } from "./order-item.dto";
 import { OrderPromotionDto } from "./order-promotion.dto";
 import { OrderStatus } from "../entities/order-status.enum";
+import { PaymentStatus } from "src/modules/payment/enums/payment-status.enum";
 
 export class OrderDto {
   @ApiProperty({
@@ -31,7 +32,7 @@ export class OrderDto {
   @ApiProperty({
     description: "Current payment status",
     example: "unpaid",
-    enum: ["unpaid", "paid", "refunded", "partially_refunded", "failed"],
+    enum: PaymentStatus,
   })
   @Expose()
   paymentStatus: string;
