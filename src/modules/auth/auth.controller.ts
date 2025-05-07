@@ -30,6 +30,7 @@ import { LoginDto, RegisterDto } from "./dto/auth-request.dto";
 import { SocialAuthRequestDto } from "./dto/social-auth.dto";
 import { ProviderType } from "../users/entities/user-provider.entity";
 import { CurrentUser } from "./decorators/user.decorator";
+import { VerifyTokenDto, VerifyTokenResponseDto } from "./dto/verify-token.dto";
 
 @ApiTags("Authentication-Public")
 @Controller("auth")
@@ -119,6 +120,33 @@ export class AuthController {
   ): Promise<LoginResponseDto> {
     const resp = await this.authService.socialLogin(socialAuthDto);
     return plainToClass(LoginResponseDto, resp, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  @Post("verify-token")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Verify JWT token",
+    description: "Verify if a JWT token is valid and return token information",
+  })
+  @ApiBody({
+    type: VerifyTokenDto,
+    description: "JWT token to verify",
+  })
+  @ApiOkResponse({
+    description: "Token verification result",
+    type: VerifyTokenResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid input",
+    type: BadRequestResponseDto,
+  })
+  async verifyToken(
+    @Body() verifyTokenDto: VerifyTokenDto,
+  ): Promise<VerifyTokenResponseDto> {
+    const result = await this.authService.verifyToken(verifyTokenDto.token);
+    return plainToClass(VerifyTokenResponseDto, result, {
       excludeExtraneousValues: true,
     });
   }

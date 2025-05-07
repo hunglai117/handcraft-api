@@ -228,4 +228,37 @@ export class AuthService {
       message: `Successfully unlinked ${provider} account`,
     };
   }
+
+  async verifyToken(token: string) {
+    try {
+      // Verify the JWT token
+      const payload = this.jwtService.verify(token);
+
+      // Return token information with validation status
+      return {
+        valid: true,
+        userId: payload.sub,
+        email: payload.email,
+        fullName: payload.fullName,
+        exp: payload.exp,
+        message: "Token is valid",
+      };
+    } catch (error) {
+      // Handle different types of JWT errors
+      let message = "Invalid token";
+
+      if (error.name === "TokenExpiredError") {
+        message = "Token has expired";
+      } else if (error.name === "JsonWebTokenError") {
+        message = "Invalid token signature";
+      } else if (error.name === "NotBeforeError") {
+        message = "Token not active yet";
+      }
+
+      return {
+        valid: false,
+        message,
+      };
+    }
+  }
 }
