@@ -198,7 +198,7 @@ export class UsersController {
     description: "User not found",
     type: NotFoundResponseDto,
   })
-  async getProfile(@CurrentUser("sub") userId: string): Promise<UserDto> {
+  async getProfile(@CurrentUser("id") userId: string): Promise<UserDto> {
     const user = await this.usersService.findById(userId);
     return plainToInstance(UserDto, user, {
       excludeExtraneousValues: true,
@@ -221,7 +221,7 @@ export class UsersController {
   })
   @ApiBody({ type: UpdateProfileRequestDto })
   async updateProfile(
-    @CurrentUser("sub") userId: string,
+    @CurrentUser("id") userId: string,
     @Body() updateProfileDto: UpdateProfileRequestDto,
   ): Promise<UserDto> {
     const user = await this.usersService.updateProfile(
@@ -248,7 +248,7 @@ export class UsersController {
     type: UnauthorizedResponseDto,
   })
   async getUserProviders(
-    @CurrentUser("sub") userId: string,
+    @CurrentUser("id") userId: string,
   ): Promise<UserProviderDto[]> {
     const providers = await this.userProviderService.findAllByUserId(userId);
     return plainToInstance(UserProviderDto, providers, {
