@@ -6,6 +6,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { IoAdapter } from "@nestjs/platform-socket.io";
 import * as express from "express";
 import { useContainer } from "class-validator";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
@@ -64,9 +65,25 @@ async function bootstrap() {
     fs.writeFileSync("./swagger-spec.json", JSON.stringify(document));
   }
 
+  // Configure WebSocket adapter with CORS settings matching the rest API
+  app.useWebSocketAdapter(
+    new (require("@nestjs/platform-socket.io").IoAdapter)(app),
+  );
+
+  // Configure WebSocket adapter with CORS settings matching the rest API
+  app.useWebSocketAdapter(new IoAdapter(app));
+
   await app.listen(configService.get("app.port"));
   logger.log(
     `Application is running on: ${configService.get("app.url")}`,
+    "Bootstrap",
+  );
+  logger.log(
+    `WebSocket server is available at: ${configService.get("app.url")}/orders`,
+    "Bootstrap",
+  );
+  logger.log(
+    `WebSocket server is available at: ${configService.get("app.url")}/orders`,
     "Bootstrap",
   );
 }

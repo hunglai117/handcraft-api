@@ -18,6 +18,7 @@ import { CurrentUser } from "../../auth/decorators/current-user.decorator";
 import { AddToCartDto } from "../dto/add-to-cart.dto";
 import { CartDto } from "../dto/cart.dto";
 import { UpdateCartItemDto } from "../dto/update-cart-item.dto";
+import { AddMultipleToCartDto } from "../dto/add-multiple-to-cart.dto";
 import { Cart } from "../entities/cart.entity";
 import { CartService } from "../services/cart.service";
 
@@ -52,6 +53,25 @@ export class CartController {
     @Body() addToCartDto: AddToCartDto,
   ): Promise<CartDto> {
     const cart = await this.cartService.addToCart(userId, addToCartDto);
+
+    return this.transformToCartDto(cart);
+  }
+
+  @Post("items/batch")
+  @ApiOperation({ summary: "Add multiple items to cart at once" })
+  @ApiResponse({
+    status: 201,
+    description: "Items added to cart successfully",
+    type: CartDto,
+  })
+  async addMultipleToCart(
+    @CurrentUser("id") userId: string,
+    @Body() addMultipleToCartDto: AddMultipleToCartDto,
+  ): Promise<CartDto> {
+    const cart = await this.cartService.addMultipleItemsToCart(
+      userId,
+      addMultipleToCartDto,
+    );
 
     return this.transformToCartDto(cart);
   }
