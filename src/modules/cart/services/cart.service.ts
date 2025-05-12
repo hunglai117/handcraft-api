@@ -1,19 +1,20 @@
 import {
-  Injectable,
-  NotFoundException,
-  Logger,
   BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { SnowflakeIdGenerator } from "src/common/utils/snowflake.util";
 import { Repository } from "typeorm";
-import { Cart } from "../entities/cart.entity";
-import { CartItem } from "../entities/cart-item.entity";
-import { ProductVariant } from "../../products/entities/product-variant.entity";
-import { AddToCartDto } from "../dto/add-to-cart.dto";
-import { UpdateCartItemDto } from "../dto/update-cart-item.dto";
 import { RedisLockService } from "../../redis/redis-lock.service";
 import { RedisService } from "../../redis/redis.service";
-import { SnowflakeIdGenerator } from "src/common/utils/snowflake.util";
+import { AddMultipleToCartDto } from "../dto/add-multiple-to-cart.dto";
+import { AddToCartDto } from "../dto/add-to-cart.dto";
+import { UpdateCartItemDto } from "../dto/update-cart-item.dto";
+import { CartItem } from "../entities/cart-item.entity";
+import { Cart } from "../entities/cart.entity";
+import { ProductVariant } from "src/modules/products/entities/product-variant.entity";
 
 @Injectable()
 export class CartService {
@@ -678,5 +679,130 @@ export class CartService {
   async clearCart(userId: string): Promise<Cart> {
     await this.clearCartWithLock(userId);
     return this.getOrCreateCart(userId);
+  }
+
+  async addMultipleItemsToCart(
+    userId: string,
+    addMultipleToCartDto: AddMultipleToCartDto,
+  ): Promise<Cart> {
+    const cartHashKey = this.getCartHashKey(userId);
+    const cartMetaKey = this.getCartMetaKey(userId);
+    const lockKey = this.getLockKey(userId);
+    const redisClient = this.redisService.getClient();
+
+    try {
+      return await this.redisLockService.withLock(
+        lockKey,
+        async () => {
+          // Get current cart or create a new one
+          const cart = await this.getOrCreateCart(userId);
+
+          // Process each item to add to cart
+          for (const itemDto of addMultipleToCartDto.items) {
+            // First try to find if this item already exists in the cart
+            const existingItemIndex = cart.cartItems.findIndex(
+              (item) => item.productVariantId === itemDto.productId,
+            );
+
+            // Get the product variant
+            const productVariant = await this.productVariantRepository.findOne({
+              where: { id: itemDto.productId },
+              relations: ["product"],
+            });
+
+            if (!productVariant) {
+              this.logger.warn(
+                `Product variant not found: ${itemDto.productId}`,
+              );
+              continue;
+            }
+
+            // Check stock availability
+            const quantity = Math.min(
+              itemDto.quantity,
+              productVariant.stockQuantity,
+            );
+
+            if (quantity <= 0) {
+              this.logger.warn(`Item ${itemDto.productId} out of stock`);
+              continue;
+            }
+
+            if (existingItemIndex >= 0) {
+              // Update existing item
+              const existingItem = cart.cartItems[existingItemIndex];
+              existingItem.quantity += quantity;
+              existingItem.updatedAt = new Date();
+
+              // Update in Redis
+              const redisCartItem = {
+                id: existingItem.id,
+                productVariantId: existingItem.productVariantId,
+                quantity: existingItem.quantity,
+                productVariant: productVariant,
+                cartId: existingItem.cartId,
+                createdAt: existingItem.createdAt,
+                updatedAt: existingItem.updatedAt,
+              };
+
+              await redisClient.hset(
+                cartHashKey,
+                itemDto.productId,
+                JSON.stringify(redisCartItem),
+              );
+            } else {
+              // Create new cart item
+              const newCartItem = this.cartItemRepository.create({
+                productVariantId: itemDto.productId,
+                quantity,
+                cartId: cart.id,
+              });
+
+              // Generate ID for new item
+              newCartItem.generateId();
+              newCartItem.createdAt = new Date();
+              newCartItem.updatedAt = new Date();
+
+              // Add to cart items array
+              cart.cartItems.push(newCartItem);
+
+              // Add to Redis
+              const redisCartItem = {
+                id: newCartItem.id,
+                productVariantId: newCartItem.productVariantId,
+                quantity: newCartItem.quantity,
+                productVariant: productVariant,
+                cartId: newCartItem.cartId,
+                createdAt: newCartItem.createdAt,
+                updatedAt: newCartItem.updatedAt,
+              };
+
+              await redisClient.hset(
+                cartHashKey,
+                itemDto.productId,
+                JSON.stringify(redisCartItem),
+              );
+            }
+          }
+
+          // If there was a placeholder, remove it
+          if (await redisClient.hexists(cartHashKey, "placeholder")) {
+            await redisClient.hdel(cartHashKey, "placeholder");
+          }
+
+          // Refresh TTL
+          await redisClient.expire(cartHashKey, this.CART_TTL);
+          await redisClient.expire(cartMetaKey, this.CART_TTL);
+
+          return cart;
+        },
+        3000,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error adding multiple items to cart: ${error.message}`,
+      );
+      throw error;
+    }
   }
 }

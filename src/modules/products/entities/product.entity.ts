@@ -3,6 +3,7 @@ import { Category } from "../../categories/entities/category.entity";
 import { BaseEntity } from "../../../common/entities/base.entity";
 import { ProductVariant } from "./product-variant.entity";
 import { ProductOption } from "./product-option.entity";
+import { ProductRating } from "./product-rating.entity";
 
 @Entity("products")
 export class Product extends BaseEntity {
@@ -65,4 +66,7 @@ export class Product extends BaseEntity {
 
   @Column({ default: 0 })
   rating: number;
+
+  @OneToMany(() => ProductRating, (rating) => rating.product)
+  ratings: ProductRating[];
 }

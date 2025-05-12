@@ -4,7 +4,7 @@ export enum OrderStatus {
   PROCESSING = "processing", // Order is being prepared/fulfilled
   READY_TO_SHIP = "ready_to_ship", // Order is packed and waiting for shipping
   SHIPPED = "shipped", // Order handed to shipping provider
-  DELIVERED = "delivered", // Order delivered to customer
+  COMPLETED = "completed", // Order completed (delivered and confirmed)
   CANCELLED = "cancelled", // Order cancelled
   REFUND_REQUESTED = "refund_requested", // Customer requested a refund
   REFUNDED = "refunded", // Order refunded
